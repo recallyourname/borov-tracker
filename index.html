@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ТУПА БОРАВ: рейтинг и матчи</title>
+<title>ТУПА БОРАВ: … ММР</title>
 <meta name="description" content="Примерный MMR, последние 20 матчей и статистика игрока 226241953, обновление каждые 15 минут">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -315,6 +315,7 @@ function render(d) {
   const p = d.profile || {};
   if (p.avatar) $("#ava").src = p.avatar;
   $("#nick").textContent = p.name ? `· ${p.name}` : "";
+  document.title = `ТУПА БОРАВ: ${d.mmr} ММР`;
 
   const ms = d.matches, days = d.days.points, st = d.stats;
   const todayIso = new Date().toISOString().slice(0, 10);
