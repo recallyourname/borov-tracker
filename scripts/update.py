@@ -23,9 +23,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "borov.db"
 OUT = ROOT / "data.json"
 
-# Слепок: 6781 MMR на 16.09.2026 16:00 по Бангкоку (09:00 UTC). От него ±25 за каждую ранкед-игру
-# вперёд и назад. Назад считаем до 31.07.2026 — патч 7.41e пересчитал шкалу MMR, и в тот же день он
-# вернулся в доту после перерыва с октября 2025.
+# Опорная точка рейтинга; от неё ±25 за каждую ранкед-игру вперёд и назад.
+# Назад считаем до 31.07.2026 — патч 7.41e пересчитал шкалу MMR.
 BASE_TS, BASE_MMR = "2026-09-16T09:00:00+00:00", 6781
 BASE_DATE = BASE_TS[:10]
 HISTORY_FROM = "2026-07-31"
@@ -276,7 +275,6 @@ def build_output(db, const):
         "profile": kv_get(db, "profile", {}),
         "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "scraped_at": kv_get(db, "scraped_at"),
-        "base": {"date": BASE_DATE, "ts": BASE_TS, "mmr": BASE_MMR},
         "history_from": HISTORY_FROM,
         "step": STEP,
         "mmr": current,
@@ -287,9 +285,9 @@ def build_output(db, const):
 
 
 def rating_series(rows, cal):
-    """Рейтинг после каждой ранкед-игры от слепка BASE_TS (вперёд и назад) и точки на конец дня.
+    """Рейтинг после каждой ранкед-игры от опорной точки BASE_TS (вперёд и назад) и точки на конец дня.
 
-    Если за какой-то день после слепка в календаре Dotabuff игр больше, чем матчей в базе (сборщик что-то
+    Если за какой-то день после опорной точки в календаре Dotabuff игр больше, чем матчей в базе (сборщик что-то
     пропустил), недостающие W/L добавляем по календарю — они сдвигают рейтинг этого дня и всех следующих.
     """
     chrono = sorted(rows, key=lambda m: m["start"])
