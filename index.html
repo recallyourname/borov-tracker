@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Габриель: рейтинг и матчи</title>
+<title>ТУПА БОРАУ: рейтинг и матчи</title>
 <meta name="description" content="Примерный MMR и последние 20 матчей игрока 226241953, обновление каждые 15 минут">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,6 +47,8 @@ a { color: inherit; }
 .who .meta a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
 .who .meta a:hover { color: var(--text); }
 .live { margin-left: auto; display: grid; justify-items: end; gap: 2px; font-size: 13px; color: var(--muted); }
+.live .timer { font: 800 34px var(--f-head); line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.live.due .timer { color: var(--gold); font-size: 22px; }
 .live .dot { display: inline-flex; align-items: center; gap: 7px; font: 600 14px var(--f-head); color: var(--text); }
 .live .dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--win); box-shadow: 0 0 0 0 #5cbf7580; animation: pulse 2s infinite; }
 .live.stale .dot::before { background: var(--gold); animation: none; }
@@ -166,7 +168,7 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   <div class="wrap">
     <img class="ava" id="ava" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
     <div class="who">
-      <h1>Габриель <span class="nick" id="nick"></span></h1>
+      <h1>ТУПА БОРАУ <span class="nick" id="nick"></span></h1>
       <div class="meta">
         <span>ID 226241953</span>
         <a href="https://www.dotabuff.com/players/226241953" target="_blank" rel="noopener">Dotabuff</a>
@@ -174,8 +176,9 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       </div>
     </div>
     <div class="live" id="live">
-      <span class="dot" id="upd">Загружаю…</span>
-      <span id="next"></span>
+      <span class="dot">До пересчёта</span>
+      <span class="timer" id="timer">--:--</span>
+      <span id="upd"></span>
     </div>
   </div>
 </header>
@@ -218,13 +221,24 @@ async function load() {
   }
 }
 
+// Сборщик стартует по крону каждые 15 минут (:00/:15/:30/:45 UTC), GitHub иногда запаздывает на несколько минут.
+const SLOT = 15 * 60000;
+const nextRun = () => Math.ceil((new Date(DATA.updated_at).getTime() + 1) / SLOT) * SLOT;
+let lastPoll = 0;
+
 function tickLive() {
   if (!DATA) return;
-  const age = (Date.now() - new Date(DATA.updated_at)) / 60000;
-  $("#upd").textContent = `Обновлено ${ago(DATA.updated_at)}`;
-  $("#live").classList.toggle("stale", age > 40);
-  const left = Math.max(0, Math.ceil(15 - (age % 15)));
-  $("#next").textContent = age > 40 ? "сборщик давно не отвечал" : `следующий сбор ~через ${left} мин`;
+  const left = nextRun() - Date.now();
+  const due = left <= 0;
+  const txt = due ? "пересчитывается…" : `${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, "0")}`;
+  $("#timer").textContent = txt;
+  $("#live").classList.toggle("due", due);
+  $("#live").classList.toggle("stale", Date.now() - new Date(DATA.updated_at) > 45 * 60000);
+  $("#upd").textContent = `Последний фетч ${DATA.scraped_at ? ago(DATA.scraped_at) : "—"}`;
+  const foot = $("#foot");
+  if (foot) foot.innerHTML = `Последний фетч: <b>${DATA.scraped_at ? when(DATA.scraped_at) : "—"}</b> · до пересчёта: <b>${txt}</b>`;
+  // как только слот прошёл — раз в минуту проверяем, не появились ли новые данные
+  if (due && Date.now() - lastPoll > 60000) { lastPoll = Date.now(); load(); }
 }
 
 function render(d) {
@@ -237,7 +251,7 @@ function render(d) {
   const days = d.days;
   const today = days[days.length - 1];
   const todayDelta = today ? d.step * (today.w - today.l) : 0;
-  const weekAgo = days.length > 7 ? days[days.length - 8].mmr : d.anchor.mmr;
+  const weekAgo = days.length > 7 ? days[days.length - 8].mmr : d.base.mmr;
   const wins = ms.filter(m => m.win).length;
   const losses = ms.length - wins;
 
@@ -296,11 +310,11 @@ function render(d) {
     <div class="wrap">
       <div class="sh">
         <h2>Рейтинг по дням</h2>
-        <p>Старт ${fmt(d.base.mmr)} на ${dShort(d.base.date)}, дальше ±${d.step} за игру. До ${dShort(d.anchor.date)} считано по OpenDota, после — по календарю Dotabuff.</p>
+        <p>Старт ${fmt(d.base.mmr)} на ${dShort(d.base.date)}, дальше ±${d.step} за игру по календарю Dotabuff.</p>
       </div>
       <div class="card chart">
         <div class="sc"><div id="dayChart"></div></div>
-        <div class="legend"><span><i></i>по дням, Dotabuff</span><span><i class="d"></i>${dShort(d.base.date)}–${dShort(d.anchor.date)}, OpenDota (итог 93W–99L)</span></div>
+        <div class="legend"><span><i></i>рейтинг на конец дня</span></div>
       </div>
     </div>
   </section>
@@ -337,11 +351,7 @@ function render(d) {
 
   <section>
     <div class="wrap">
-      <div class="note">
-        <p><b>Как считается.</b> Рейтинг у игрока скрыт, поэтому он примерный: ${fmt(d.base.mmr)} на ${dShort(d.base.date)}, затем +${d.step} за победу и −${d.step} за поражение. С ${dShort(d.base.date)} по ${dShort(d.anchor.date)} — матчи из OpenDota (93W–99L → ${fmt(d.anchor.mmr)}). Позже OpenDota историю не отдаёт, поэтому дальше идёт дневной счёт из календаря Dotabuff.</p>
-        <p><b>Откуда матчи.</b> Список последних игр — с главной страницы профиля Dotabuff, она обновляется раз в 15 минут. Предметы, NW и GPM берутся из OpenDota по ID матча и появляются через несколько минут после игры. Новые матчи копятся, так что на странице всегда последние 20.</p>
-        <p><b>Погрешность.</b> Календарь Dotabuff показывает не все игры (за 16.09–09.10 там 157 игр, в OpenDota 192), поэтому реальный рейтинг может отличаться на пару сотен. Последнее успешное чтение Dotabuff: ${d.scraped_at ? when(d.scraped_at) : "—"}.</p>
-      </div>
+      <p class="note" id="foot"></p>
     </div>
   </section>`;
 
@@ -373,8 +383,10 @@ function drawDays(d) {
   const el = $("#dayChart");
   const W = 1000, H = 300, L = 48, R = 16, T = 24, B = 30;
   const DAY = 86400000;
-  const t0 = new Date(d.base.date + "T00:00:00").getTime();
-  const pts = [{ date: d.base.date, mmr: d.base.mmr, base: true }, { date: d.anchor.date, mmr: d.anchor.mmr, anchor: true }, ...d.days];
+  // точка старта — начало дня базы, дневные точки — рейтинг на конец дня
+  const t0 = new Date(d.base.date + "T00:00:00").getTime() - DAY;
+  const startIso = new Date(t0 + 12 * 3600000).toISOString().slice(0, 10);
+  const pts = [{ date: startIso, mmr: d.base.mmr, base: true }, ...d.days];
   const tEnd = new Date(pts[pts.length - 1].date + "T00:00:00").getTime();
   const [lo, hi] = niceRange(pts.map(p => p.mmr), 40);
   const x = date => L + (new Date(date + "T00:00:00").getTime() - t0) / Math.max(DAY, tEnd - t0) * (W - L - R);
@@ -388,7 +400,7 @@ function drawDays(d) {
     const dd = new Date(t);
     g += `<text x="${x(iso)}" y="${H - 8}" text-anchor="middle">${String(dd.getDate()).padStart(2, "0")}.${String(dd.getMonth() + 1).padStart(2, "0")}</text>`;
   }
-  const solid = [pts[1], ...d.days];
+  const solid = pts;
   const line = solid.map((p, i) => `${i ? "L" : "M"}${x(p.date).toFixed(1)},${y(p.mmr).toFixed(1)}`).join("");
   const area = line + `L${x(solid[solid.length - 1].date)},${H - B}L${x(solid[0].date)},${H - B}Z`;
   const last = solid[solid.length - 1];
@@ -399,10 +411,9 @@ function drawDays(d) {
     <line x1="${L}" x2="${W - R}" y1="${baseY}" y2="${baseY}" stroke="#8a93a0" stroke-dasharray="2 4" opacity=".6"/>
     <text x="${W - R}" y="${baseY - 6}" text-anchor="end">старт ${d.base.mmr}</text>
     <path class="area" d="${area}"/>
-    <path class="dash" d="M${x(d.base.date)},${y(d.base.mmr)}L${x(d.anchor.date)},${y(d.anchor.mmr)}"/>
     <path class="lineGold" d="${line}"/>
     ${pts.map(p => {
-      const tipTxt = p.base ? `<b>${p.mmr}</b><br>${dShort(p.date)} · стартовая точка` : p.anchor ? `<b>${p.mmr}</b><br>${dShort(p.date)} · итог по OpenDota` : `<b>${p.mmr}</b><br>${dShort(p.date)} · <span class="w">${p.w}W</span>–<span class="l">${p.l}L</span> · ${sign(25 * (p.w - p.l))}`;
+      const tipTxt = p.base ? `<b>${p.mmr}</b><br>старт ${dShort(d.base.date)}`  : `<b>${p.mmr}</b><br>${dShort(p.date)} · <span class="w">${p.w}W</span>–<span class="l">${p.l}L</span> · ${sign(25 * (p.w - p.l))}`;
       return `<circle class="pt" cx="${x(p.date)}" cy="${y(p.mmr)}" r="${p === last ? 5 : 3}"/><circle class="hit" cx="${x(p.date)}" cy="${y(p.mmr)}" r="11" data-tip="${esc(tipTxt)}"/>`;
     }).join("")}
     <text class="lbl-v" x="${x(last.date) - 8}" y="${y(last.mmr) - 12}" text-anchor="end">≈${last.mmr}</text>
@@ -447,7 +458,7 @@ function drawMatches(d) {
 
 load();
 setInterval(load, 5 * 60000);
-setInterval(tickLive, 30000);
+setInterval(tickLive, 1000);
 </script>
 </body>
 </html>

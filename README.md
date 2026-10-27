@@ -1,4 +1,4 @@
-# gabriel-tracker
+# borov-tracker
 
 Лендинг с примерным MMR и последними 20 матчами игрока Dota 2 `226241953`.
 

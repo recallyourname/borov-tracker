@@ -22,14 +22,12 @@ ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "data" / "state.json"
 OUT = ROOT / "data.json"
 
-# База: 6781 на 16.09.2026; 16.09–09.10 по OpenDota 93W/99L → 6631 на конец 09.10.
-# Дальше OpenDota историю не отдаёт, считаем по календарю Dotabuff ±25 за игру.
+# База: 6781 на 16.09.2026, дальше ±25 за игру по календарю Dotabuff (день 16.09 включительно).
 BASE_DATE, BASE_MMR = "2026-09-16", 6781
-ANCHOR_DATE, ANCHOR_MMR = "2026-10-09", 6631
 STEP = 25
 KEEP = 20
 CDN = "https://cdn.cloudflare.steamstatic.com"
-UA = {"User-Agent": "gabriel-tracker/1.0 (+github actions)"}
+UA = {"User-Agent": "borov-tracker/1.0 (+github actions)"}
 
 
 def get(url, headers=None, timeout=60, tries=3):
@@ -70,10 +68,11 @@ CAL_RE = re.compile(
 def scrape_dotabuff():
     html = get(
         f"https://r.jina.ai/https://www.dotabuff.com/players/{ACCOUNT}",
-        headers={"X-Return-Format": "html", "X-No-Cache": "true"},
+        headers={"X-Return-Format": "html"},
         timeout=120,
     )
-    if not html:
+    # Вместо профиля может прийти заглушка Cloudflare — тогда считаем, что данных нет.
+    if not html or "Latest Matches" not in html:
         return None, None
     rows = []
     # Режем по строкам таблицы, чтобы ленивый regex не перескакивал между матчами.
@@ -177,9 +176,9 @@ def build_output(state):
     heroes, items = state.get("heroes", {}), state.get("items", {})
     cal = state["calendar"]
 
-    # Кривая рейтинга по дням после якоря.
-    days, mmr = [], ANCHOR_MMR
-    for d in sorted(k for k in cal if k > ANCHOR_DATE):
+    # Кривая рейтинга по дням от базы.
+    days, mmr = [], BASE_MMR
+    for d in sorted(k for k in cal if k >= BASE_DATE):
         w, l = cal[d]
         mmr += STEP * (w - l)
         days.append({"date": d, "w": w, "l": l, "mmr": mmr})
@@ -220,7 +219,6 @@ def build_output(state):
         "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "scraped_at": state.get("scraped_at"),
         "base": {"date": BASE_DATE, "mmr": BASE_MMR},
-        "anchor": {"date": ANCHOR_DATE, "mmr": ANCHOR_MMR},
         "step": STEP,
         "mmr": current,
         "days": days,
