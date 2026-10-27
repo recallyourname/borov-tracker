@@ -23,8 +23,12 @@ ROOT = Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "borov.db"
 OUT = ROOT / "data.json"
 
-# База: 6781 на 16.09.2026, дальше ±25 за игру по календарю Dotabuff (день 16.09 включительно).
-BASE_DATE, BASE_MMR = "2026-09-16", 6781
+# Слепок: 6781 MMR на 16.09.2026 16:00 по Бангкоку (09:00 UTC). От него ±25 за каждую ранкед-игру
+# вперёд и назад. Назад считаем до 31.07.2026 — патч 7.41e пересчитал шкалу MMR, и в тот же день он
+# вернулся в доту после перерыва с октября 2025.
+BASE_TS, BASE_MMR = "2026-09-16T09:00:00+00:00", 6781
+BASE_DATE = BASE_TS[:10]
+HISTORY_FROM = "2026-07-31"
 STEP = 25
 KEEP = 20
 OD_PER_RUN = 40  # сколько матчей без деталей догружать из OpenDota за один запуск
@@ -244,15 +248,7 @@ def build_output(db, const):
     heroes, items = const["heroes"], const["items"]
     cal = {r["date"]: (r["w"], r["l"]) for r in db.execute("select * from calendar")}
 
-    # Кривая рейтинга по дням от базы.
-    days, mmr = [], BASE_MMR
-    for d in sorted(k for k in cal if k >= BASE_DATE):
-        w, l = cal[d]
-        mmr += STEP * (w - l)
-        days.append({"date": d, "w": w, "l": l, "mmr": mmr})
-    current = mmr
-
-    all_rows = [dict(r) for r in db.execute("select * from matches order by start desc")]
+    all_rows = [dict(r) for r in db.execute("select * from matches where start >= ? order by start desc", (HISTORY_FROM,))]
     for m in all_rows:
         for f in ("items", "backpack", "purchased", "score"):
             m[f] = json.loads(m[f]) if m[f] else None
@@ -260,10 +256,10 @@ def build_output(db, const):
         m["hero"] = hero.get("name") or m["hero_name"]
         m["hero_img"] = hero.get("img") or f"{CDN}/apps/dota2/images/dota_react/heroes/{slug(m['hero_name'])}.png"
 
-    # Последние матчи; рейтинг после каждого — откатываем от текущего назад.
-    after, recent = current, []
+    days, current = rating_series(all_rows, cal)
+
+    recent = []
     for m in all_rows[:KEEP]:
-        delta = (STEP if m["win"] else -STEP) if m["type"] == "Ranked" else 0
         recent.append({
             "id": m["id"], "start": m["start"], "hero": m["hero"], "hero_img": m["hero_img"],
             "win": bool(m["win"]), "type": m["type"], "duration": m["duration"],
@@ -272,16 +268,16 @@ def build_output(db, const):
             "level": m["level"], "side": m["side"], "score": m["score"],
             "items": [item_ref(items, i) for i in (m["items"] or [])],
             "neutral": item_ref(items, m["neutral"]),
-            "delta": delta, "mmr_after": after,
+            "delta": m["delta"], "mmr_after": m["mmr_after"],
         })
-        after -= delta
 
     return {
         "account_id": ACCOUNT,
         "profile": kv_get(db, "profile", {}),
         "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "scraped_at": kv_get(db, "scraped_at"),
-        "base": {"date": BASE_DATE, "mmr": BASE_MMR},
+        "base": {"date": BASE_DATE, "ts": BASE_TS, "mmr": BASE_MMR},
+        "history_from": HISTORY_FROM,
         "step": STEP,
         "mmr": current,
         "days": days,
@@ -290,9 +286,61 @@ def build_output(db, const):
     }
 
 
+def rating_series(rows, cal):
+    """Рейтинг после каждой ранкед-игры от слепка BASE_TS (вперёд и назад) и точки на конец дня.
+
+    Если за какой-то день после слепка в календаре Dotabuff игр больше, чем матчей в базе (сборщик что-то
+    пропустил), недостающие W/L добавляем по календарю — они сдвигают рейтинг этого дня и всех следующих.
+    """
+    chrono = sorted(rows, key=lambda m: m["start"])
+    by_day = {}
+    for m in chrono:
+        m["day"] = m["start"][:10]
+        m["delta"] = (STEP if m["win"] else -STEP) if m["type"] == "Ranked" else 0
+        w, l, n = by_day.get(m["day"], (0, 0, 0))
+        by_day[m["day"]] = (w + (m["delta"] > 0), l + (m["delta"] < 0), n + 1)
+
+    extra = {}
+    for d, (cw, cl) in cal.items():
+        w, l, n = by_day.get(d, (0, 0, 0))
+        if d >= BASE_DATE and cw + cl > n:
+            extra[d] = (cw, cl, STEP * ((cw - w) - (cl - l)))
+
+    mmr = BASE_MMR
+    for m in reversed([m for m in chrono if m["start"] < BASE_TS]):
+        m["mmr_after"] = mmr
+        mmr -= m["delta"]
+    start_mmr = mmr
+    mmr = BASE_MMR
+    for m in (m for m in chrono if m["start"] >= BASE_TS):
+        mmr += m["delta"]
+        m["mmr_after"] = mmr
+
+    shift, shift_by_day = 0, {}
+    for d in sorted(set(by_day) | set(extra)):
+        shift += extra[d][2] if d in extra else 0
+        shift_by_day[d] = shift
+    for m in chrono:
+        if m["start"] >= BASE_TS:
+            m["mmr_after"] += shift_by_day[m["day"]]
+
+    last_of_day = {m["day"]: m["mmr_after"] for m in chrono}
+    points, prev = [], start_mmr
+    for d in sorted(set(by_day) | set(extra)):
+        end = last_of_day.get(d, prev + (extra[d][2] if d in extra else 0))
+        w, l, _ = by_day.get(d, (0, 0, 0))
+        if d in extra:
+            w, l = extra[d][0], extra[d][1]
+        points.append({"date": d, "w": w, "l": l, "mmr": end})
+        prev = end
+    current = points[-1]["mmr"] if points else BASE_MMR
+    return {"start": start_mmr, "points": points}, current
+
+
 def period_stats(rows, items, days):
-    """Статистика по всем матчам базы с BASE_DATE."""
-    rows = [m for m in rows if m["start"][:10] >= BASE_DATE]
+    """Статистика по всем ранкед-матчам базы с HISTORY_FROM."""
+    rows = [m for m in rows if m["type"] == "Ranked"]
+    days = days["points"]
     detailed = [m for m in rows if m["items"] is not None]
     cal_games = sum(d["w"] + d["l"] for d in days)
     wr = lambda ms: {"n": len(ms), "w": sum(m["win"] for m in ms)}  # noqa: E731
@@ -335,7 +383,7 @@ def period_stats(rows, items, days):
                           "without": wr([m for m in detailed if not inv(m)])})
 
     return {
-        "since": BASE_DATE,
+        "since": HISTORY_FROM,
         "games": len(rows),
         "detailed": len(detailed),
         "calendar_games": cal_games,
