@@ -116,6 +116,26 @@ a { color: inherit; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .legend i.ln { width: 18px; height: 0; border-top: 2px solid var(--gold); border-radius: 0; vertical-align: middle; }
 
+/* farm tiles */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; }
+.tile .k { font: 600 13px var(--f-head); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tile .v { font: 700 28px var(--f-head); line-height: 1.05; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tile .v .dl { margin-left: 0; font-size: 14px; }
+.tile .s { font-size: 12px; color: var(--muted); }
+.sep { border-top: 1px solid var(--line); margin: 2px 0; }
+.streaks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.streaks .tile .v { font-size: 34px; }
+
+/* weeks */
+.wtab { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wtab th { text-align: right; font: 600 12px var(--f-head); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.wtab th:first-child, .wtab td:first-child { text-align: left; }
+.wtab td { text-align: right; padding: 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.wtab tr:last-child td { border-bottom: 0; }
+.wtab td b { font: 700 16px var(--f-head); }
+.gbar { display: inline-block; height: 6px; border-radius: 3px; background: var(--gold); vertical-align: middle; margin-right: 6px; opacity: .85; }
+
 /* heroes */
 .hlist { display: grid; gap: 2px; max-height: 420px; overflow-y: auto; margin-right: -8px; padding-right: 8px; }
 .hrow { display: grid; grid-template-columns: 50px minmax(0, 1fr) 64px 54px; gap: 12px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
@@ -319,6 +339,9 @@ function render(d) {
         <div class="delta"><div class="v ${d.mmr - weekAgo >= 0 ? "w" : "l"}">${sign(d.mmr - weekAgo)}</div><div class="s">за 7 дней</div></div>
         <div class="delta"><div class="v ${d.mmr - d.base.mmr >= 0 ? "w" : "l"}">${sign(d.mmr - d.base.mmr)}</div><div class="s">с ${dShort(d.base.date)}</div></div>
       </div>
+      <div class="sep"></div>
+      <div class="ch"><span class="lbl">Фарм за 7 дней</span><span class="sub">${games(st.farm.week.n)} · дельта к прошлой неделе</span></div>
+      <div class="tiles">${farmTiles(st.farm)}</div>
     </div>
 
     <div class="card acc-blue c4">
@@ -334,6 +357,19 @@ function render(d) {
         }).join("")}
       </div>
       <div class="cap"><span>← старые</span><span>${ms.length ? `Серия: <b class="${ms[0].win ? "w" : "l"}">${streak} ${ms[0].win ? "побед" : "поражений"} подряд</b>` : ""}</span><span>новые →</span></div>
+      <div class="sep"></div>
+      <div class="ch"><span class="lbl">Серии с ${dShort(st.since)}</span><span class="sub">${games(st.games)}</span></div>
+      <div class="streaks">
+        ${streakTile("Лучшая победная", st.streaks.win, "w")}
+        ${streakTile("Худшая проигрышная", st.streaks.loss, "l")}
+        <div class="tile"><span class="k">Сейчас</span><span class="v ${st.streaks.current.win ? "w" : "l"}">${st.streaks.current.n}${st.streaks.current.win ? "W" : "L"}</span><span class="s">${st.streaks.current.win ? "побед" : "поражений"} подряд</span></div>
+      </div>
+      <div class="ch"><span class="lbl">В последних ${ms.length}</span></div>
+      <div class="streaks">
+        <div class="tile"><span class="k">Макс. побед</span><span class="v w">${runs(ms, true)}</span><span class="s">подряд</span></div>
+        <div class="tile"><span class="k">Макс. поражений</span><span class="v l">${runs(ms, false)}</span><span class="s">подряд</span></div>
+        <div class="tile"><span class="k">Средний GPM</span><span class="v">${avgOf(ms, m => m.gpm)}</span><span class="s">KDA ${avgOf(ms, m => (m.k + m.a) / Math.max(1, m.d), 1)} · ${dur(Math.round(avgOf(ms, m => m.duration, 0, true)))}</span></div>
+      </div>
     </div>
 
     <div class="card acc-gold c4 wide-m" id="radCard"></div>
@@ -357,6 +393,9 @@ function render(d) {
           </div>`;
         }).join("")}
       </div>
+      <div class="sep"></div>
+      <div class="ch"><span class="lbl">По неделям</span><span class="sub">средние за неделю, дельта GPM к прошлой</span></div>
+      ${weeksTable(st.weeks)}
     </div>
 
     <div class="card c8 chart">
@@ -411,6 +450,51 @@ function render(d) {
   drawMatches(d);
   bindTips($("#app"));
   tickLive();
+}
+
+function farmTiles(f) {
+  const T = [["GPM", "gpm", 0], ["XPM", "xpm", 0], ["Добивания/мин", "lhm", 1], ["Net worth", "nw", 0, v => (v / 1000).toFixed(1) + "k"], ["KDA", "kda", 1], ["Урон/мин", "hdm", 0]];
+  return T.map(([name, key, digits, show]) => {
+    const v = f.week[key], pv = f.prev[key], all = f.all[key];
+    const view = x => x == null ? "—" : show ? show(x) : x.toFixed(digits);
+    const dlt = v != null && pv != null ? v - pv : null;
+    const dTxt = dlt == null ? "" : `<span class="dl ${dlt > 0 ? "w" : dlt < 0 ? "l" : "m"}">${dlt > 0 ? "+" : dlt < 0 ? "−" : "±"}${show ? show(Math.abs(dlt)) : Math.abs(dlt).toFixed(digits)}</span>`;
+    return `<div class="tile"><span class="k">${name}</span><span class="v">${view(v)}${dTxt}</span><span class="s">за период ${view(all)}</span></div>`;
+  }).join("");
+}
+
+function streakTile(name, s, cls) {
+  if (!s) return `<div class="tile"><span class="k">${name}</span><span class="v">—</span></div>`;
+  const a = when(s.from).slice(0, 5), b = when(s.to).slice(0, 5);
+  return `<div class="tile"><span class="k">${name}</span><span class="v ${cls}">${s.n}</span><span class="s">${a === b ? a : `${a}–${b}`}</span></div>`;
+}
+
+function runs(ms, win) {
+  let best = 0, cur = 0;
+  for (const m of ms) { cur = m.win === win ? cur + 1 : 0; best = Math.max(best, cur); }
+  return best;
+}
+
+function avgOf(ms, f, digits = 0, raw = false) {
+  const v = ms.map(f).filter(x => x != null && !Number.isNaN(x));
+  if (!v.length) return "—";
+  const a = v.reduce((s, x) => s + x, 0) / v.length;
+  return raw ? a : a.toFixed(digits);
+}
+
+function weeksTable(ws) {
+  const max = Math.max(...ws.map(w => w.gpm || 0));
+  return `<table class="wtab"><thead><tr><th>Неделя</th><th>Игр</th><th>WR</th><th>GPM</th><th>Δ</th><th>XPM</th></tr></thead><tbody>
+    ${ws.slice().reverse().map((w, i, arr) => {
+      const prev = arr[i + 1];
+      const dl = prev && w.gpm != null && prev.gpm != null ? Math.round(w.gpm - prev.gpm) : null;
+      const wr = Math.round(w.w / w.n * 100);
+      return `<tr><td>${dShort(w.week)}</td><td>${w.n}</td><td class="${wr >= 50 ? "w" : "l"}">${wr}%</td>
+        <td><span class="gbar" style="width:${Math.round((w.gpm || 0) / max * 46)}px"></span><b>${w.gpm != null ? Math.round(w.gpm) : "—"}</b></td>
+        <td>${dl == null ? "—" : `<span class="dl ${dl > 0 ? "w" : dl < 0 ? "l" : "m"}">${sign(dl)}</span>`}</td>
+        <td>${w.xpm != null ? Math.round(w.xpm) : "—"}</td></tr>`;
+    }).join("")}
+  </tbody></table>`;
 }
 
 function renderRadiance(st) {

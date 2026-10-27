@@ -4,9 +4,14 @@ on:
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["index.html", "scripts/**", ".github/workflows/**"]
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: update
@@ -15,7 +20,10 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,3 +37,11 @@ jobs:
           git add data.json data/borov.db
           git diff --cached --quiet || git commit -m "data: $(date -u +%Y-%m-%dT%H:%MZ)"
           git push
+      - name: Build site
+        run: mkdir -p _site && cp index.html data.json _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

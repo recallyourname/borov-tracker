@@ -15,7 +15,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ACCOUNT = 226241953
@@ -344,7 +344,71 @@ def period_stats(rows, items, days):
         "heroes": heroes,
         "radiance": {"all": radiance_block(detailed), "spectre": radiance_block(spectre)},
         "items": top_items,
+        "farm": farm_stats(detailed),
+        "weeks": week_stats(detailed),
+        "streaks": streak_stats(rows),
     }
+
+
+def avg(ms, f):
+    vals = [f(m) for m in ms]
+    vals = [v for v in vals if v is not None]
+    return round(sum(vals) / len(vals), 2) if vals else None
+
+
+FARM = {
+    "gpm": lambda m: m["gpm"],
+    "xpm": lambda m: m["xpm"],
+    "lhm": lambda m: m["lh"] / (m["duration"] / 60) if m["lh"] is not None and m["duration"] else None,
+    "nw": lambda m: m["net_worth"],
+    "kda": lambda m: (m["k"] + m["a"]) / max(1, m["d"]),
+    "hdm": lambda m: m["hero_damage"] / (m["duration"] / 60) if m["hero_damage"] is not None and m["duration"] else None,
+    "dur": lambda m: m["duration"],
+}
+
+
+def farm_stats(detailed):
+    """Средние за период, за последние 7 дней и за 7 дней до них."""
+    now = datetime.now(timezone.utc)
+    def window(lo, hi):
+        return [m for m in detailed if lo <= (now - datetime.fromisoformat(m["start"])).total_seconds() / 86400 < hi]
+    blocks = {"all": detailed, "week": window(0, 7), "prev": window(7, 14)}
+    return {k: {"n": len(ms), **{f: avg(ms, fn) for f, fn in FARM.items()}} for k, ms in blocks.items()}
+
+
+def week_stats(detailed):
+    """По календарным неделям (пн–вс, UTC): игры, винрейт, средние GPM/XPM."""
+    weeks = {}
+    for m in detailed:
+        d = datetime.fromisoformat(m["start"])
+        key = (d - timedelta(days=d.weekday())).strftime("%Y-%m-%d")
+        weeks.setdefault(key, []).append(m)
+    return [{"week": k, "n": len(ms), "w": sum(m["win"] for m in ms),
+             "gpm": avg(ms, FARM["gpm"]), "xpm": avg(ms, FARM["xpm"]), "lhm": avg(ms, FARM["lhm"])}
+            for k, ms in sorted(weeks.items())]
+
+
+def streak_stats(rows):
+    """Самые длинные серии побед и поражений за период и текущая серия."""
+    chrono = sorted(rows, key=lambda m: m["start"])
+    best = {1: None, 0: None}
+    i = 0
+    while i < len(chrono):
+        j = i
+        while j + 1 < len(chrono) and chrono[j + 1]["win"] == chrono[i]["win"]:
+            j += 1
+        n, w = j - i + 1, chrono[i]["win"]
+        if not best[w] or n > best[w]["n"]:
+            best[w] = {"n": n, "from": chrono[i]["start"], "to": chrono[j]["start"]}
+        i = j + 1
+    cur = {"n": 0, "win": None}
+    for m in reversed(chrono):
+        if cur["win"] is None:
+            cur["win"] = bool(m["win"])
+        if bool(m["win"]) != cur["win"]:
+            break
+        cur["n"] += 1
+    return {"win": best[1], "loss": best[0], "current": cur}
 
 
 def item_ref(items, iid):
