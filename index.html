@@ -169,6 +169,7 @@ a { color: inherit; }
 /* charts */
 .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
 .chart .sc { overflow-x: auto; }
+.card.fill { grid-template-rows: auto minmax(0, 1fr); align-content: stretch; }
 svg text { fill: var(--muted); font-family: var(--f-body); font-size: 12px; }
 svg .grid { stroke: var(--line); stroke-width: 1; }
 svg .lineGold { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
@@ -377,7 +378,7 @@ function render(d) {
 
     <div class="card acc-gold c4 wide-m" id="radCard"></div>
 
-    <div class="card c8 chart">
+    <div class="card c8 chart fill">
       <div class="ch"><h2>Рейтинг по дням</h2><span class="sub">±${d.step} за ранкед-игру с патча 7.41e (${dShort(d.history_from)})</span></div>
       <div class="sc"><div id="dayChart"></div></div>
     </div>
@@ -397,7 +398,7 @@ function render(d) {
         }).join("")}
       </div>
       <div class="sep"></div>
-      <div class="ch"><span class="lbl">По неделям</span><span class="sub">средние за неделю, дельта GPM к прошлой</span></div>
+      <div class="ch"><span class="lbl">По неделям</span><span class="sub">последние 5, дельта GPM к прошлой</span></div>
       ${weeksTable(st.weeks)}
     </div>
 
@@ -451,6 +452,8 @@ function render(d) {
   renderRadiance(st);
   drawDays(d);
   drawMatches(d);
+  let rt;
+  onresize = () => { clearTimeout(rt); rt = setTimeout(() => { drawDays(d); bindTips($("#dayChart")); }, 150); };
   bindTips($("#app"));
   tickLive();
 }
@@ -485,8 +488,10 @@ function avgOf(ms, f, digits = 0, raw = false) {
   return raw ? a : a.toFixed(digits);
 }
 
-function weeksTable(ws) {
-  const max = Math.max(...ws.map(w => w.gpm || 0));
+function weeksTable(all) {
+  // берём на одну неделю больше, чтобы у самой старой из показанных была дельта
+  const ws = all.slice(-6), shown = 5;
+  const max = Math.max(...ws.slice(-shown).map(w => w.gpm || 0));
   return `<table class="wtab"><thead><tr><th>Неделя</th><th>Игр</th><th>WR</th><th>GPM</th><th>Δ</th><th>XPM</th></tr></thead><tbody>
     ${ws.slice().reverse().map((w, i, arr) => {
       const prev = arr[i + 1];
@@ -496,7 +501,7 @@ function weeksTable(ws) {
         <td><span class="gbar" style="width:${Math.round((w.gpm || 0) / max * 46)}px"></span><b>${w.gpm != null ? Math.round(w.gpm) : "—"}</b></td>
         <td>${dl == null ? "—" : `<span class="dl ${dl > 0 ? "w" : dl < 0 ? "l" : "m"}">${sign(dl)}</span>`}</td>
         <td>${w.xpm != null ? Math.round(w.xpm) : "—"}</td></tr>`;
-    }).join("")}
+    }).slice(0, shown).join("")}
   </tbody></table>`;
 }
 
@@ -537,9 +542,30 @@ function niceRange(vals, pad) {
   return [Math.floor((Math.min(...vals) - pad) / 50) * 50, Math.ceil((Math.max(...vals) + pad) / 50) * 50];
 }
 
+// монотонная кубическая кривая (Fritsch–Carlson): плавно, но без выбросов выше/ниже точек
+function smoothPath(ps) {
+  const n = ps.length;
+  if (n < 3) return ps.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(1)},${py.toFixed(1)}`).join("");
+  const dx = [], sl = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = ps[i + 1][0] - ps[i][0]; sl[i] = (ps[i + 1][1] - ps[i][1]) / dx[i]; }
+  const m = [sl[0]];
+  for (let i = 1; i < n - 1; i++) m[i] = sl[i - 1] * sl[i] <= 0 ? 0 : 3 * (dx[i - 1] + dx[i]) / ((2 * dx[i] + dx[i - 1]) / sl[i - 1] + (dx[i] + 2 * dx[i - 1]) / sl[i]);
+  m[n - 1] = sl[n - 2];
+  let path = `M${ps[0][0].toFixed(1)},${ps[0][1].toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3, [x0, y0] = ps[i], [x1, y1] = ps[i + 1];
+    path += `C${(x0 + h).toFixed(1)},${(y0 + m[i] * h).toFixed(1)} ${(x1 - h).toFixed(1)},${(y1 - m[i + 1] * h).toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  return path;
+}
+
 function drawDays(d) {
   const el = $("#dayChart");
-  const W = 1100, H = 330, L = 50, R = 16, T = 26, B = 30;
+  // высота под карточку: убираем старый svg, меряем свободное место и подгоняем viewBox под него
+  el.innerHTML = "";
+  const box = el.parentElement;
+  const W = 1100, L = 50, R = 16, T = 26, B = 30;
+  const H = box.clientWidth && box.clientHeight > 200 ? Math.max(330, Math.floor(W * (box.clientHeight - 2) / box.clientWidth)) : 330;
   const DAY = 86400000;
   // точка старта — рейтинг до первой игры после патча, дневные точки — рейтинг на конец дня
   const t0 = new Date(d.history_from + "T00:00:00").getTime() - DAY;
@@ -556,7 +582,7 @@ function drawDays(d) {
     const dd = new Date(t), iso = new Date(t + 12 * 3600000).toISOString().slice(0, 10);
     g += `<text x="${x(iso)}" y="${H - 8}" text-anchor="middle">${String(dd.getDate()).padStart(2, "0")}.${String(dd.getMonth() + 1).padStart(2, "0")}</text>`;
   }
-  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(p.date).toFixed(1)},${y(p.mmr).toFixed(1)}`).join("");
+  const line = smoothPath(pts.map(p => [x(p.date), y(p.mmr)]));
   const area = line + `L${x(pts[pts.length - 1].date)},${H - B}L${x(pts[0].date)},${H - B}Z`;
   const last = pts[pts.length - 1];
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Рейтинг по дням">
@@ -567,7 +593,7 @@ function drawDays(d) {
     <path class="lineGold" d="${line}"/>
     ${pts.map((p, i) => {
       const t = p.start ? `<b>${p.mmr}</b><br>до первой игры после патча 7.41e` : `<b>${p.mmr}</b><br>${dShort(p.date)} · <span class="w">${p.w}W</span>–<span class="l">${p.l}L</span> · ${sign(p.mmr - pts[i - 1].mmr)}`;
-      return `<circle class="pt" cx="${x(p.date)}" cy="${y(p.mmr)}" r="${p === last ? 5 : 3}"/><circle class="hit" cx="${x(p.date)}" cy="${y(p.mmr)}" r="12" data-tip="${esc(t)}"/>`;
+      return `${p === last ? `<circle class="pt" cx="${x(p.date)}" cy="${y(p.mmr)}" r="5"/>` : ""}<circle class="hit" cx="${x(p.date)}" cy="${y(p.mmr)}" r="12" data-tip="${esc(t)}"/>`;
     }).join("")}
     <text class="lbl-v" x="${x(last.date) - 10}" y="${y(last.mmr) - 12}" text-anchor="end">≈${last.mmr}</text>
   </svg>`;
