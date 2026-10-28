@@ -139,6 +139,9 @@ def scrape_dotabuff():
             "k": int(k), "d": int(d), "a": int(a),
         })
     cal = {d: (int(w), int(l)) for d, w, l in CAL_RE.findall(html)}
+    # Изменение разметки не должно выдавать пустой результат за успешное обновление.
+    if not rows or not cal:
+        return None, None
     return rows, cal
 
 
@@ -218,8 +221,9 @@ def fill_details(db, limit):
 def main(od_limit=OD_PER_RUN):
     db = connect()
     rows, cal = scrape_dotabuff()
+    kv_set(db, "scrape_status", "unavailable" if rows is None else "ok")
     if rows is None:
-        print("dotabuff unavailable, keeping previous data", file=sys.stderr)
+        print("::warning::Dotabuff unavailable, keeping previous data", file=sys.stderr)
     else:
         print(f"dotabuff: {len(rows)} matches, {len(cal)} calendar days")
         for r in rows:
@@ -275,6 +279,7 @@ def build_output(db, const):
         "profile": kv_get(db, "profile", {}),
         "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "scraped_at": kv_get(db, "scraped_at"),
+        "scrape_status": kv_get(db, "scrape_status"),
         "history_from": HISTORY_FROM,
         "step": STEP,
         "mmr": current,

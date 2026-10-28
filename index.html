@@ -241,9 +241,10 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       </div>
     </div>
     <div class="live" id="live">
-      <span class="dot">До пересчёта</span>
+      <span class="dot" id="schedule">До планового обновления</span>
       <span class="timer" id="timer">--:--</span>
       <span id="upd"></span>
+      <span id="source"></span>
     </div>
   </div>
 </header>
@@ -301,13 +302,17 @@ function tickLive() {
   if (!DATA) return;
   const left = nextRun() - Date.now();
   const due = left <= 0;
-  const txt = due ? "пересчитывается…" : `${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, "0")}`;
+  const txt = due ? "ожидаем обновление" : `${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, "0")}`;
+  const sourceFailed = DATA.scrape_status === "unavailable";
+  const sourceStale = !DATA.scraped_at || Date.now() - new Date(DATA.scraped_at) > 45 * 60000;
+  $("#schedule").textContent = due ? "Плановое обновление" : "До планового обновления";
   $("#timer").textContent = txt;
   $("#live").classList.toggle("due", due);
-  $("#live").classList.toggle("stale", Date.now() - new Date(DATA.updated_at) > 45 * 60000);
-  $("#upd").textContent = `Последний фетч ${DATA.scraped_at ? ago(DATA.scraped_at) : "—"}`;
+  $("#live").classList.toggle("stale", sourceFailed || sourceStale || Date.now() - new Date(DATA.updated_at) > 45 * 60000);
+  $("#upd").textContent = `Пересчёт: ${ago(DATA.updated_at)}`;
+  $("#source").textContent = `Данные Dotabuff: ${DATA.scraped_at ? ago(DATA.scraped_at) : "ещё не получены"}${sourceFailed ? " · источник недоступен" : ""}`;
   const foot = $("#foot");
-  if (foot) foot.innerHTML = `Последний фетч: <b>${DATA.scraped_at ? when(DATA.scraped_at) : "—"}</b> · до пересчёта: <b>${txt}</b>`;
+  if (foot) foot.innerHTML = `Пересчёт: <b>${when(DATA.updated_at)}</b> · данные Dotabuff: <b>${DATA.scraped_at ? when(DATA.scraped_at) : "—"}</b>${sourceFailed ? " · Dotabuff недоступен, сохранены предыдущие данные" : ""} · плановое обновление: <b>${txt}</b>`;
   // как только слот прошёл — раз в минуту проверяем, не появились ли новые данные
   if (due && Date.now() - lastPoll > 60000) { lastPoll = Date.now(); load(); }
 }
