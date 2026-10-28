@@ -30,6 +30,7 @@ BASE_DATE = BASE_TS[:10]
 HISTORY_FROM = "2026-07-31"
 STEP = 25
 KEEP = 20
+FORM = 50  # по скольким последним ранкед-играм считать винрейт для прогноза до 7к
 OD_PER_RUN = 40  # сколько матчей без деталей догружать из OpenDota за один запуск
 CDN = "https://cdn.cloudflare.steamstatic.com"
 UA = {"User-Agent": "borov-tracker/1.0 (+github actions)"}
@@ -299,6 +300,8 @@ def build_output(db, const):
         "mmr": current,
         "days": days,
         "matches": recent,
+        "form": {"n": len(ranked := [m for m in all_rows if m["type"] == "Ranked"][:FORM]),
+                 "w": sum(m["win"] for m in ranked)},
         "stats": period_stats(all_rows, items, days),
     }
 

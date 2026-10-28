@@ -78,6 +78,10 @@ a { color: inherit; }
 .mmr small { font-size: .45em; color: #e3ae4599; margin-right: 4px; vertical-align: .35em; }
 .rank b { font: 700 22px var(--f-head); color: var(--text); display: block; line-height: 1.1; }
 .rank span { font-size: 13px; color: var(--muted); }
+.goal { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
+.goal > b { font: 700 28px var(--f-head); line-height: 1.05; color: var(--text); }
+.goal span { font-size: 13px; color: var(--muted); }
+.goal .sep-dot { flex-basis: 100%; }
 .deltas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .delta { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
 .delta .v { font: 700 28px var(--f-head); line-height: 1.05; }
@@ -276,6 +280,8 @@ const ago = iso => {
 };
 const when = iso => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 const games = n => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "игра" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "игры" : "игр"}`;
+const plural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
+const GOAL = 7000;
 const RANKS = ["", "Herald", "Guardian", "Crusader", "Archon", "Legend", "Ancient", "Divine", "Immortal"];
 const RAD_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/radiance.png";
 
@@ -338,6 +344,13 @@ function render(d) {
   for (const m of ms) { if (m.win === ms[0]?.win) streak++; else break; }
   const tier = p.rank_tier ? RANKS[Math.floor(p.rank_tier / 10)] : "";
   const coverage = `${games(st.games)} в ранкеде с ${dShort(st.since)}`;
+  // Каждая ранкед-игра даёт ±step, поэтому до цели нужно столько побед сверх поражений.
+  const toGoal = Math.ceil((GOAL - d.mmr) / d.step);
+  // При винрейте p игра в среднем даёт step·(2p − 1); на p ≤ 50% рейтинг не растёт.
+  const formWr = d.form?.n ? d.form.w / d.form.n : null;
+  const perGame = formWr == null ? 0 : d.step * (2 * formWr - 1);
+  const goalGames = perGame > 0 ? Math.ceil((GOAL - d.mmr) / perGame) : null;
+  const goalForm = formWr == null ? "" : `<span class="sep-dot">при WR ${Math.round(formWr * 100)}% за ${d.form.n} игр: ${goalGames ? `≈${games(goalGames)}` : `<b class="l">не дойдёт</b>`}</span>`;
 
   $("#app").innerHTML = `
   <div class="dash">
@@ -347,6 +360,7 @@ function render(d) {
         <div class="mmr"><small>≈</small>${fmt(d.mmr)}</div>
         ${tier ? `<div class="rank"><b>${tier}</b>${p.leaderboard_rank ? `<span>#${fmt(p.leaderboard_rank)} в лидерборде</span>` : ""}</div>` : ""}
       </div>
+        <div class="goal">${toGoal > 0 ? `<b>${toGoal}</b><span>${plural(toGoal, "победа", "победы", "побед")} в плюс до ${GOAL / 1000}к</span>${goalForm}` : `<b>${GOAL / 1000}к</b><span>взято</span>`}</div>
       <div class="deltas">
         <div class="delta"><div class="v ${todayDelta >= 0 ? "w" : "l"}">${sign(todayDelta)}</div><div class="s">сегодня${today ? ` · ${today.w}-${today.l}` : ""}</div></div>
         <div class="delta"><div class="v ${d.mmr - weekAgo >= 0 ? "w" : "l"}">${sign(d.mmr - weekAgo)}</div><div class="s">за 7 дней</div></div>
