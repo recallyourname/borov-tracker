@@ -124,15 +124,19 @@ CAL_RE = re.compile(
 def scrape_dotabuff():
     """(rows, cal, fresh). Сначала свежая страница; если Cloudflare не пустил jina — её последний снимок из кэша."""
     for fresh in (True, False):
-        rows, cal = parse_dotabuff(get(
+        html = get(
             f"https://r.jina.ai/https://www.dotabuff.com/players/{ACCOUNT}",
             # Без X-No-Cache jina отдаёт снимок страницы из своего кэша, и свежие матчи приходят с опозданием.
             headers={"X-Return-Format": "html", **({"X-No-Cache": "true"} if fresh else {}),
                      **({"Authorization": f"Bearer {JINA_KEY}"} if JINA_KEY else {})},
             timeout=120,
-        ))
+        )
+        rows, cal = parse_dotabuff(html)
         if rows:
             return rows, cal, fresh
+        title = re.search(r"<title>([^<]*)", html or "")
+        print(f"dotabuff {'fresh' if fresh else 'cached'}: no profile ({len(html or '')} bytes, "
+              f"title {title.group(1) if title else None!r}, start {(html or '')[:120]!r})", file=sys.stderr)
     return None, None, False
 
 
