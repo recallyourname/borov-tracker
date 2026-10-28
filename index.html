@@ -157,6 +157,7 @@ a { color: inherit; }
 .ilist { display: grid; gap: 2px; }
 .irow { display: grid; grid-template-columns: 40px minmax(0, 1fr) 58px 60px; gap: 12px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
 .irow:first-child { border-top: 0; }
+@media (min-width: 821px) { .ilist.cols { grid-template-columns: 1fr 1fr; column-gap: 32px; } .ilist.cols .irow:nth-child(2) { border-top: 0; } }
 .irow img { width: 40px; height: 29px; border-radius: 4px; }
 .irow .nm { font: 600 16px var(--f-head); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .irow .nm span { font: 400 12px var(--f-body); color: var(--muted); margin-left: 6px; }
@@ -214,9 +215,22 @@ table.h td.c, table.h th.c { text-align: right; }
 .dl.m { background: var(--panel-2); color: var(--muted); }
 td a { color: var(--muted); text-decoration: none; }
 td a:hover { color: var(--text); text-decoration: underline; }
-td a.db { display: inline-block; font: 600 13px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
-td a.db:hover { border-color: var(--gold); color: var(--gold); text-decoration: none; }
-td a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+a.db { text-decoration: none; display: inline-block; font: 600 13px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+a.db:hover { border-color: var(--gold); color: var(--gold); text-decoration: none; }
+a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+/* shame */
+.slist { display: grid; gap: 2px; }
+.srow { display: grid; grid-template-columns: 22px 50px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.srow:first-child { border-top: 0; }
+.srow .rk { font: 700 18px var(--f-head); color: var(--muted); text-align: right; }
+.srow img { width: 50px; height: 28px; border-radius: 4px; object-fit: cover; background: var(--panel-2); }
+.srow .nm { font: 600 17px var(--f-head); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow .sub { white-space: nowrap; }
+.srow .kda { white-space: nowrap; }
+.srow a.db { padding: 4px 8px; font-size: 12px; }
+.lang { margin-left: 4px; }
+.lang button { padding: 2px 10px; font-size: 13px; }
 
 .foot { font-size: 13px; color: var(--muted); padding: 4px 0 28px; }
 .foot b { color: var(--text); font-weight: 600; }
@@ -241,11 +255,15 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   <div class="wrap">
     <img class="ava" id="ava" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
     <div class="who">
-      <h1>ТУПА БОРАВ <span class="nick" id="nick"></span></h1>
+      <h1><span id="name">ТУПА БОРАВ</span> <span class="nick" id="nick"></span></h1>
       <div class="meta">
         <span>ID 226241953</span>
         <a href="https://www.dotabuff.com/players/226241953" target="_blank" rel="noopener">Dotabuff</a>
         <a href="https://www.opendota.com/players/226241953" target="_blank" rel="noopener">OpenDota</a>
+        <div class="seg lang" role="group" aria-label="Язык / Idioma">
+          <button type="button" data-lang="ru">RU</button>
+          <button type="button" data-lang="es">ES</button>
+        </div>
       </div>
     </div>
     <div class="live" id="live">
@@ -265,23 +283,95 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 <script>
 const $ = (s, el = document) => el.querySelector(s);
+const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
+const I18N = {
+  ru: {
+    locale: "ru-RU", name: "ТУПА БОРАВ", mmr: "ММР", loading: "Загружаю данные…",
+    loadErr: e => `Не удалось загрузить data.json (${e}). Попробую ещё раз через минуту.`,
+    justNow: "только что", minAgo: m => `${m} мин назад`, hAgo: (h, m) => `${h} ч ${m} мин назад`, dAgo: d => `${d} дн назад`,
+    games: n => `${n} ${ruPlural(n, "игра", "игры", "игр")}`,
+    untilRun: "До планового обновления", runNow: "Плановое обновление", waiting: "ожидаем обновление",
+    recalc: "Пересчёт", dbData: "Данные Dotabuff", dbDataLc: "данные Dotabuff", notYet: "ещё не получены",
+    srcDown: "источник недоступен", srcCached: "снимок из кэша jina", footDown: "Dotabuff недоступен, сохранены предыдущие данные", nextRunLc: "плановое обновление",
+    approx: "Примерный рейтинг", lbRank: n => `#${n} в лидерборде`,
+    goalWins: (n, g) => `${ruPlural(n, "победа", "победы", "побед")} в плюс до ${g}`,
+    goalForm: (wr, n, res) => `при WR ${wr}% за ${n} игр: ${res}`, never: "не дойдёт", reached: "взято",
+    today: "сегодня", week: "за 7 дней", since: (d, m) => `с ${d} (${m})`,
+    farm7: "Фарм за 7 дней", farmSub: g => `${g} · дельта к прошлой неделе`, perPeriod: "за период",
+    farmNames: ["GPM", "XPM", "Добивания/мин", "Net worth", "KDA", "Урон/мин"],
+    lastN: n => `Последние ${n} матчей`, stripAria: "Победы и поражения, слева старые",
+    win: "Победа", loss: "Поражение", older: "← старые", newer: "новые →",
+    streakNow: (n, w) => `Серия: ${n} ${w ? ruPlural(n, "победа", "победы", "побед") : ruPlural(n, "поражение", "поражения", "поражений")} подряд`, streaksSince: d => `Серии с ${d}`,
+    bestWin: "Лучшая победная", worstLoss: "Худшая проигрышная", now: "Сейчас", inRow: (w, n) => `${w ? ruPlural(n, "победа", "победы", "побед") : ruPlural(n, "поражение", "поражения", "поражений")} подряд`,
+    inLastN: n => `В последних ${n}`, maxWins: "Макс. побед", maxLosses: "Макс. поражений", row: "подряд", avgGpm: "Средний GPM",
+    daily: "Рейтинг по дням", dailySub: (s, d) => `±${s} за ранкед-игру с патча 7.41e (${d})`,
+    patch: "патч 7.41e", beforePatch: "до первой игры после патча 7.41e",
+    heroes: "Герои", coverage: (g, d) => `${g} в ранкеде с ${d}`, byWeek: "По неделям", byWeekSub: "последние 5, дельта GPM к прошлой",
+    weekCols: ["Неделя", "Игр", "WR", "GPM", "Δ", "XPM"],
+    chartSub: "рейтинг после каждой игры, наведите на столбик", legWin: "победа", legLoss: "поражение", legLine: "рейтинг после игры",
+    ratingTip: "рейтинг", matchAria: "Рейтинг по последним матчам",
+    items: "Винрейт по предметам", itemsSub: n => `топ-10 в инвентаре · ${n} игр`, without: "без",
+    legWith: "с предметом", legWithout: "без него", legDiff: "справа — разница в п.п.",
+    matches: "Матчи", lastLc: n => `последние ${n}`,
+    cols: ["Герой", "Результат", "Длительность", "KDA", "NW · GPM", "Предметы", "Рейтинг", "Матч"],
+    lvl: "ур.", score: "счёт", waitOd: "ждём OpenDota", onDb: id => `Матч ${id} на Dotabuff`,
+    shame: "Позорный зал", shameSub: (n, d) => `топ-${n} с ${d} · от 10 смертей, по смертям минус убийства`,
+    scope: "Выборка", allHeroes: "Все герои", withRad: "с Радиком", noRad: "без Радика", radBought: "куплен Radiance",
+  },
+  es: {
+    locale: "es-ES", name: "PUTA MADRE BASURO", mmr: "MMR", loading: "Cargando datos…",
+    loadErr: e => `No se pudo cargar data.json (${e}). Reintento en un minuto.`,
+    justNow: "ahora mismo", minAgo: m => `hace ${m} min`, hAgo: (h, m) => `hace ${h} h ${m} min`, dAgo: d => `hace ${d} d`,
+    games: n => `${n} ${n === 1 ? "partida" : "partidas"}`,
+    untilRun: "Próxima actualización", runNow: "Actualización programada", waiting: "esperando actualización",
+    recalc: "Recalculado", dbData: "Datos de Dotabuff", dbDataLc: "datos de Dotabuff", notYet: "aún no recibidos",
+    srcDown: "fuente no disponible", srcCached: "copia en caché de jina", footDown: "Dotabuff no disponible, se mantienen los datos anteriores", nextRunLc: "próxima actualización",
+    approx: "MMR aproximado", lbRank: n => `#${n} en la clasificación`,
+    goalWins: (n, g) => `${n === 1 ? "victoria neta" : "victorias netas"} hasta ${g}`,
+    goalForm: (wr, n, res) => `con WR ${wr}% en ${n} partidas: ${res}`, never: "no llega", reached: "conseguido",
+    today: "hoy", week: "en 7 días", since: (d, m) => `desde ${d} (${m})`,
+    farm7: "Farmeo en 7 días", farmSub: g => `${g} · cambio vs. semana anterior`, perPeriod: "en el periodo",
+    farmNames: ["GPM", "XPM", "Last hits/min", "Net worth", "KDA", "Daño/min"],
+    lastN: n => `Últimas ${n} partidas`, stripAria: "Victorias y derrotas, las antiguas a la izquierda",
+    win: "Victoria", loss: "Derrota", older: "← antiguas", newer: "recientes →",
+    streakNow: (n, w) => `Racha: ${n} ${w ? "victoria" : "derrota"}${n === 1 ? " seguida" : "s seguidas"}`, streaksSince: d => `Rachas desde ${d}`,
+    bestWin: "Mejor racha ganadora", worstLoss: "Peor racha perdedora", now: "Ahora", inRow: (w, n) => `${w ? "victoria" : "derrota"}${n === 1 ? " seguida" : "s seguidas"}`,
+    inLastN: n => `En las últimas ${n}`, maxWins: "Máx. victorias", maxLosses: "Máx. derrotas", row: "seguidas", avgGpm: "GPM medio",
+    daily: "MMR por día", dailySub: (s, d) => `±${s} por partida clasificatoria desde el parche 7.41e (${d})`,
+    patch: "parche 7.41e", beforePatch: "antes de la primera partida tras el parche 7.41e",
+    heroes: "Héroes", coverage: (g, d) => `${g} clasificatorias desde ${d}`, byWeek: "Por semanas", byWeekSub: "últimas 5, cambio de GPM vs. la anterior",
+    weekCols: ["Semana", "Part.", "WR", "GPM", "Δ", "XPM"],
+    chartSub: "MMR tras cada partida, pasa el cursor por las barras", legWin: "victoria", legLoss: "derrota", legLine: "MMR tras la partida",
+    ratingTip: "MMR", matchAria: "MMR en las últimas partidas",
+    items: "Winrate por objetos", itemsSub: n => `top 10 en inventario · ${n} partidas`, without: "sin",
+    legWith: "con el objeto", legWithout: "sin él", legDiff: "a la derecha, diferencia en p.p.",
+    matches: "Partidas", lastLc: n => `últimas ${n}`,
+    cols: ["Héroe", "Resultado", "Duración", "KDA", "NW · GPM", "Objetos", "MMR", "Partida"],
+    lvl: "nv.", score: "marcador", waitOd: "esperando OpenDota", onDb: id => `Partida ${id} en Dotabuff`,
+    shame: "Muro de la vergüenza", shameSub: (n, d) => `top ${n} desde ${d} · 10+ muertes, por muertes menos kills`,
+    scope: "Muestra", allHeroes: "Todos", withRad: "con Radiance", noRad: "sin Radiance", radBought: "compró Radiance",
+  },
+};
+// Язык: ?lang=es в ссылке, потом выбор из прошлого визита, по умолчанию русский.
+const savedLang = () => { try { return localStorage.getItem("lang"); } catch { return null; } };
+let lang = [new URLSearchParams(location.search).get("lang"), savedLang()].find(l => l in I18N) || "ru";
+let S = I18N[lang];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmt = n => n == null ? "—" : n.toLocaleString("ru-RU");
+const fmt = n => n == null ? "—" : n.toLocaleString(S.locale);
 const sign = n => (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n);
 const dur = s => s == null ? "—" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const pct = o => o.n ? Math.round(o.w / o.n * 100) : null;
-const dShort = iso => new Date(iso + "T00:00:00").toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+const dShort = iso => new Date(iso + "T00:00:00").toLocaleDateString(S.locale, { day: "2-digit", month: "2-digit" });
 const ago = iso => {
   const m = Math.round((Date.now() - new Date(iso)) / 60000);
-  if (m < 1) return "только что";
-  if (m < 60) return `${m} мин назад`;
+  if (m < 1) return S.justNow;
+  if (m < 60) return S.minAgo(m);
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} ч ${m % 60} мин назад`;
-  return `${Math.floor(h / 24)} дн назад`;
+  if (h < 24) return S.hAgo(h, m % 60);
+  return S.dAgo(Math.floor(h / 24));
 };
-const when = iso => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-const games = n => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "игра" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "игры" : "игр"}`;
-const plural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
+const when = iso => new Date(iso).toLocaleString(S.locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const games = n => S.games(n);
 const GOAL = 7000;
 const RANKS = ["", "Herald", "Guardian", "Crusader", "Archon", "Legend", "Ancient", "Divine", "Immortal"];
 const RAD_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/radiance.png";
@@ -298,7 +388,7 @@ async function load() {
     DATA = next;
     if (changed) render(DATA);
   } catch (e) {
-    if (!DATA) $("#app").innerHTML = `<div class="err">Не удалось загрузить data.json (${esc(e.message)}). Попробую ещё раз через минуту.</div>`;
+    if (!DATA) $("#app").innerHTML = `<div class="err">${S.loadErr(esc(e.message))}</div>`;
     setTimeout(load, 60000);
   }
 }
@@ -312,18 +402,18 @@ function tickLive() {
   if (!DATA) return;
   const left = nextRun() - Date.now();
   const due = left <= 0;
-  const txt = due ? "ожидаем обновление" : `${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, "0")}`;
+  const txt = due ? S.waiting : `${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, "0")}`;
   const sourceFailed = DATA.scrape_status === "unavailable";
   const sourceCached = DATA.scrape_status === "cached";
   const sourceStale = !DATA.scraped_at || Date.now() - new Date(DATA.scraped_at) > 45 * 60000;
-  $("#schedule").textContent = due ? "Плановое обновление" : "До планового обновления";
+  $("#schedule").textContent = due ? S.runNow : S.untilRun;
   $("#timer").textContent = txt;
   $("#live").classList.toggle("due", due);
   $("#live").classList.toggle("stale", sourceFailed || sourceStale || Date.now() - new Date(DATA.updated_at) > 45 * 60000);
-  $("#upd").textContent = `Пересчёт: ${ago(DATA.updated_at)}`;
-  $("#source").textContent = `Данные Dotabuff: ${DATA.scraped_at ? ago(DATA.scraped_at) : "ещё не получены"}${sourceFailed ? " · источник недоступен" : sourceCached ? " · снимок из кэша jina" : ""}`;
+  $("#upd").textContent = `${S.recalc}: ${ago(DATA.updated_at)}`;
+  $("#source").textContent = `${S.dbData}: ${DATA.scraped_at ? ago(DATA.scraped_at) : S.notYet}${sourceFailed ? ` · ${S.srcDown}` : sourceCached ? ` · ${S.srcCached}` : ""}`;
   const foot = $("#foot");
-  if (foot) foot.innerHTML = `Пересчёт: <b>${when(DATA.updated_at)}</b> · данные Dotabuff: <b>${DATA.scraped_at ? when(DATA.scraped_at) : "—"}</b>${sourceFailed ? " · Dotabuff недоступен, сохранены предыдущие данные" : ""} · плановое обновление: <b>${txt}</b>`;
+  if (foot) foot.innerHTML = `${S.recalc}: <b>${when(DATA.updated_at)}</b> · ${S.dbDataLc}: <b>${DATA.scraped_at ? when(DATA.scraped_at) : "—"}</b>${sourceFailed ? ` · ${S.footDown}` : ""} · ${S.nextRunLc}: <b>${txt}</b>`;
   // как только слот прошёл — раз в минуту проверяем, не появились ли новые данные
   if (due && Date.now() - lastPoll > 60000) { lastPoll = Date.now(); load(); }
 }
@@ -332,7 +422,7 @@ function render(d) {
   const p = d.profile || {};
   if (p.avatar) $("#ava").src = p.avatar;
   $("#nick").textContent = p.name ? `· ${p.name}` : "";
-  document.title = `ТУПА БОРАВ: ${d.mmr} ММР`;
+  document.title = `${S.name}: ${d.mmr} ${S.mmr}`;
 
   const ms = d.matches, days = d.days.points, st = d.stats;
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -344,71 +434,82 @@ function render(d) {
   let streak = 0;
   for (const m of ms) { if (m.win === ms[0]?.win) streak++; else break; }
   const tier = p.rank_tier ? RANKS[Math.floor(p.rank_tier / 10)] : "";
-  const coverage = `${games(st.games)} в ранкеде с ${dShort(st.since)}`;
+  const coverage = S.coverage(games(st.games), dShort(st.since));
   // Каждая ранкед-игра даёт ±step, поэтому до цели нужно столько побед сверх поражений.
   const toGoal = Math.ceil((GOAL - d.mmr) / d.step);
   // При винрейте p игра в среднем даёт step·(2p − 1); на p ≤ 50% рейтинг не растёт.
   const formWr = d.form?.n ? d.form.w / d.form.n : null;
   const perGame = formWr == null ? 0 : d.step * (2 * formWr - 1);
   const goalGames = perGame > 0 ? Math.ceil((GOAL - d.mmr) / perGame) : null;
-  const goalForm = formWr == null ? "" : `<span class="sep-dot">при WR ${Math.round(formWr * 100)}% за ${d.form.n} игр: ${goalGames ? `≈${games(goalGames)}` : `<b class="l">не дойдёт</b>`}</span>`;
+  const goalForm = formWr == null ? "" : `<span class="sep-dot">${S.goalForm(Math.round(formWr * 100), d.form.n, goalGames ? `≈${games(goalGames)}` : `<b class="l">${S.never}</b>`)}</span>`;
 
   $("#app").innerHTML = `
   <div class="dash">
     <div class="card acc-gold c4">
-      <div class="lbl">Примерный рейтинг</div>
+      <div class="lbl">${S.approx}</div>
       <div class="mmr-line">
         <div class="mmr"><small>≈</small>${fmt(d.mmr)}</div>
-        ${tier ? `<div class="rank"><b>${tier}</b>${p.leaderboard_rank ? `<span>#${fmt(p.leaderboard_rank)} в лидерборде</span>` : ""}</div>` : ""}
+        ${tier ? `<div class="rank"><b>${tier}</b>${p.leaderboard_rank ? `<span>${S.lbRank(fmt(p.leaderboard_rank))}</span>` : ""}</div>` : ""}
       </div>
-        <div class="goal">${toGoal > 0 ? `<b>${toGoal}</b><span>${plural(toGoal, "победа", "победы", "побед")} в плюс до ${GOAL / 1000}к</span>${goalForm}` : `<b>${GOAL / 1000}к</b><span>взято</span>`}</div>
+        <div class="goal">${toGoal > 0 ? `<b>${toGoal}</b><span>${S.goalWins(toGoal, `${GOAL / 1000}k`)}</span>${goalForm}` : `<b>${GOAL / 1000}k</b><span>${S.reached}</span>`}</div>
       <div class="deltas">
-        <div class="delta"><div class="v ${todayDelta >= 0 ? "w" : "l"}">${sign(todayDelta)}</div><div class="s">сегодня${today ? ` · ${today.w}-${today.l}` : ""}</div></div>
-        <div class="delta"><div class="v ${d.mmr - weekAgo >= 0 ? "w" : "l"}">${sign(d.mmr - weekAgo)}</div><div class="s">за 7 дней</div></div>
-        <div class="delta"><div class="v ${d.mmr - d.days.start >= 0 ? "w" : "l"}">${sign(d.mmr - d.days.start)}</div><div class="s">с ${dShort(d.history_from)} (${fmt(d.days.start)})</div></div>
+        <div class="delta"><div class="v ${todayDelta >= 0 ? "w" : "l"}">${sign(todayDelta)}</div><div class="s">${S.today}${today ? ` · ${today.w}-${today.l}` : ""}</div></div>
+        <div class="delta"><div class="v ${d.mmr - weekAgo >= 0 ? "w" : "l"}">${sign(d.mmr - weekAgo)}</div><div class="s">${S.week}</div></div>
+        <div class="delta"><div class="v ${d.mmr - d.days.start >= 0 ? "w" : "l"}">${sign(d.mmr - d.days.start)}</div><div class="s">${S.since(dShort(d.history_from), fmt(d.days.start))}</div></div>
       </div>
       <div class="sep"></div>
-      <div class="ch"><span class="lbl">Фарм за 7 дней</span><span class="sub">${games(st.farm.week.n)} · дельта к прошлой неделе</span></div>
+      <div class="ch"><span class="lbl">${S.farm7}</span><span class="sub">${S.farmSub(games(st.farm.week.n))}</span></div>
       <div class="tiles">${farmTiles(st.farm)}</div>
     </div>
 
     <div class="card acc-blue c4">
-      <div class="lbl">Последние ${ms.length} матчей</div>
+      <div class="lbl">${S.lastN(ms.length)}</div>
       <div class="wr-line">
         <div class="big ${wins >= losses ? "w" : "l"}">${ms.length ? Math.round(wins / ms.length * 100) : 0}%</div>
         <div class="wl"><span class="w">${wins}W</span> – <span class="l">${losses}L</span></div>
       </div>
-      <div class="strip" aria-label="Победы и поражения, слева старые">
+      <div class="strip" aria-label="${S.stripAria}">
         ${Array.from({ length: 20 }, (_, i) => {
           const m = ms[19 - i];
-          return m ? `<i class="${m.win ? "w" : ""}" data-tip="${esc(`<b class='${m.win ? "w" : "l"}'>${m.win ? "Победа" : "Поражение"}</b> · ${esc(m.hero)}<br>${when(m.start)}`)}"></i>` : `<i class="e"></i>`;
+          return m ? `<i class="${m.win ? "w" : ""}" data-tip="${esc(`<b class='${m.win ? "w" : "l"}'>${m.win ? S.win : S.loss}</b> · ${esc(m.hero)}<br>${when(m.start)}`)}"></i>` : `<i class="e"></i>`;
         }).join("")}
       </div>
-      <div class="cap"><span>← старые</span><span>${ms.length ? `Серия: <b class="${ms[0].win ? "w" : "l"}">${streak} ${ms[0].win ? "побед" : "поражений"} подряд</b>` : ""}</span><span>новые →</span></div>
+      <div class="cap"><span>${S.older}</span><span>${ms.length ? `<b class="${ms[0].win ? "w" : "l"}">${S.streakNow(streak, ms[0].win)}</b>` : ""}</span><span>${S.newer}</span></div>
       <div class="sep"></div>
-      <div class="ch"><span class="lbl">Серии с ${dShort(st.since)}</span><span class="sub">${games(st.games)}</span></div>
+      <div class="ch"><span class="lbl">${S.streaksSince(dShort(st.since))}</span><span class="sub">${games(st.games)}</span></div>
       <div class="streaks">
-        ${streakTile("Лучшая победная", st.streaks.win, "w")}
-        ${streakTile("Худшая проигрышная", st.streaks.loss, "l")}
-        <div class="tile"><span class="k">Сейчас</span><span class="v ${st.streaks.current.win ? "w" : "l"}">${st.streaks.current.n}${st.streaks.current.win ? "W" : "L"}</span><span class="s">${st.streaks.current.win ? "побед" : "поражений"} подряд</span></div>
+        ${streakTile(S.bestWin, st.streaks.win, "w")}
+        ${streakTile(S.worstLoss, st.streaks.loss, "l")}
+        <div class="tile"><span class="k">${S.now}</span><span class="v ${st.streaks.current.win ? "w" : "l"}">${st.streaks.current.n}${st.streaks.current.win ? "W" : "L"}</span><span class="s">${S.inRow(st.streaks.current.win, st.streaks.current.n)}</span></div>
       </div>
-      <div class="ch"><span class="lbl">В последних ${ms.length}</span></div>
+      <div class="ch"><span class="lbl">${S.inLastN(ms.length)}</span></div>
       <div class="streaks">
-        <div class="tile"><span class="k">Макс. побед</span><span class="v w">${runs(ms, true)}</span><span class="s">подряд</span></div>
-        <div class="tile"><span class="k">Макс. поражений</span><span class="v l">${runs(ms, false)}</span><span class="s">подряд</span></div>
-        <div class="tile"><span class="k">Средний GPM</span><span class="v">${avgOf(ms, m => m.gpm)}</span><span class="s">KDA ${avgOf(ms, m => (m.k + m.a) / Math.max(1, m.d), 1)} · ${dur(Math.round(avgOf(ms, m => m.duration, 0, true)))}</span></div>
+        <div class="tile"><span class="k">${S.maxWins}</span><span class="v w">${runs(ms, true)}</span><span class="s">${S.row}</span></div>
+        <div class="tile"><span class="k">${S.maxLosses}</span><span class="v l">${runs(ms, false)}</span><span class="s">${S.row}</span></div>
+        <div class="tile"><span class="k">${S.avgGpm}</span><span class="v">${avgOf(ms, m => m.gpm)}</span><span class="s">KDA ${avgOf(ms, m => (m.k + m.a) / Math.max(1, m.d), 1)} · ${dur(Math.round(avgOf(ms, m => m.duration, 0, true)))}</span></div>
       </div>
     </div>
 
-    <div class="card acc-gold c4 wide-m" id="radCard"></div>
+    <div class="card acc-gold c4 wide-m">
+      <div class="ch"><h2>${S.shame}</h2><span class="sub">${S.shameSub((d.shame || []).length, dShort(d.history_from))}</span></div>
+      <div class="slist">
+        ${(d.shame || []).map((m, i) => `<div class="srow">
+          <b class="rk">${i + 1}</b>
+          <img src="${esc(m.hero_img)}" alt="" loading="lazy">
+          <div><div class="nm">${esc(m.hero)}</div><div class="sub">${when(m.start)} · <code class="mid">${m.id}</code></div></div>
+          <div class="kda"><b>${m.k}</b>/<b class="l">${m.d}</b>/<b>${m.a}</b></div>
+          <a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="${S.onDb(m.id)}">Dotabuff ↗</a>
+        </div>`).join("")}
+      </div>
+    </div>
 
     <div class="card c8 chart fill">
-      <div class="ch"><h2>Рейтинг по дням</h2><span class="sub">±${d.step} за ранкед-игру с патча 7.41e (${dShort(d.history_from)})</span></div>
+      <div class="ch"><h2>${S.daily}</h2><span class="sub">${S.dailySub(d.step, dShort(d.history_from))}</span></div>
       <div class="sc"><div id="dayChart"></div></div>
     </div>
 
     <div class="card c4 wide-m">
-      <div class="ch"><h2>Герои</h2><span class="sub">${coverage}</span></div>
+      <div class="ch"><h2>${S.heroes}</h2><span class="sub">${coverage}</span></div>
       <div class="hlist">
         ${st.heroes.map(h => {
           const max = st.heroes[0].n;
@@ -422,19 +523,43 @@ function render(d) {
         }).join("")}
       </div>
       <div class="sep"></div>
-      <div class="ch"><span class="lbl">По неделям</span><span class="sub">последние 5, дельта GPM к прошлой</span></div>
+      <div class="ch"><span class="lbl">${S.byWeek}</span><span class="sub">${S.byWeekSub}</span></div>
       ${weeksTable(st.weeks)}
     </div>
 
     <div class="card c8 chart">
-      <div class="ch"><h2>Последние ${ms.length} матчей</h2><span class="sub">рейтинг после каждой игры, наведите на столбик</span></div>
+      <div class="ch"><h2>${S.lastN(ms.length)}</h2><span class="sub">${S.chartSub}</span></div>
       <div class="sc"><div id="matchChart"></div></div>
-      <div class="legend"><span><i style="background:var(--win)"></i>победа</span><span><i style="background:var(--loss)"></i>поражение</span><span><i class="ln"></i>рейтинг после игры</span></div>
+      <div class="legend"><span><i style="background:var(--win)"></i>${S.legWin}</span><span><i style="background:var(--loss)"></i>${S.legLoss}</span><span><i class="ln"></i>${S.legLine}</span></div>
     </div>
 
-    <div class="card c4 wide-m">
-      <div class="ch"><h2>Винрейт по предметам</h2><span class="sub">топ-10 в инвентаре · ${st.detailed} игр</span></div>
-      <div class="ilist">
+    <div class="card acc-gold c4 wide-m" id="radCard"></div>
+
+    <div class="card c12">
+      <div class="ch"><h2>${S.matches}</h2><span class="sub">${S.lastLc(ms.length)}</span></div>
+      <div class="hist-wrap">
+        <table class="h">
+          <thead><tr>${S.cols.map((c, i) => `<th${[4, 6, 7].includes(i) ? ' class="c"' : ""}>${c}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${ms.map(m => `
+            <tr class="${m.win ? "win" : "loss"}">
+              <td><div class="hero"><img src="${esc(m.hero_img)}" alt="" loading="lazy"><div><b>${esc(m.hero)}</b><span>${m.side === "radiant" ? "Radiant" : m.side === "dire" ? "Dire" : ""}${m.level ? ` · ${S.lvl} ${m.level}` : ""}</span></div></div></td>
+              <td><span class="res ${m.win ? "w" : "l"}">${m.win ? S.win : S.loss}</span><a class="sub" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" title="${when(m.start)}">${ago(m.start)}</a></td>
+              <td>${dur(m.duration)}<div class="sub">${esc(m.type || "")}${m.score ? ` · ${S.score} ${m.score[0]}:${m.score[1]}` : ""}</div></td>
+              <td class="kda"><b>${m.k}</b> / <b class="l">${m.d}</b> / <b>${m.a}</b><div class="sub">KDA ${((m.k + m.a) / Math.max(1, m.d)).toFixed(1)}${m.lh != null ? ` · ${m.lh}/${m.dn}` : ""}</div></td>
+              <td class="c">${m.nw != null ? `<b class="kda">${(m.nw / 1000).toFixed(1)}k</b><div class="sub">${m.gpm} GPM</div>` : `<span class="sub">${S.waitOd}</span>`}</td>
+              <td><div class="inv">${m.items.length ? m.items.map(i => i ? `<img src="${esc(i.img)}" alt="${esc(i.name)}" title="${esc(i.name)}" loading="lazy">` : `<span class="empty"></span>`).join("") + (m.neutral ? `<img class="nt" src="${esc(m.neutral.img)}" alt="${esc(m.neutral.name)}" title="${esc(m.neutral.name)}" loading="lazy">` : "") : `<span class="sub">—</span>`}</div></td>
+              <td class="c"><span class="mm">${fmt(m.mmr_after)}</span><span class="dl ${m.delta > 0 ? "w" : m.delta < 0 ? "l" : "m"}">${m.delta ? sign(m.delta) : "0"}</span></td>
+              <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="${S.onDb(m.id)}">Dotabuff ↗</a></td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card c12">
+      <div class="ch"><h2>${S.items}</h2><span class="sub">${S.itemsSub(st.detailed)}</span></div>
+      <div class="ilist cols">
         ${st.items.map(it => {
           const a = pct(it.with), b = pct(it.without);
           const diff = b == null ? null : a - b;
@@ -442,57 +567,13 @@ function render(d) {
             <img src="${esc(it.img)}" alt="" loading="lazy">
             <div><div class="nm">${esc(it.name)}<span>${games(it.with.n)}</span></div>
               <div class="pair"><span class="a" style="width:${a}%"></span><span class="b" style="width:${b ?? 0}%"></span></div></div>
-            <div class="vs"><b class="${a >= 50 ? "w" : "l"}">${a}%</b>без ${b == null ? "—" : b + "%"}</div>
+            <div class="vs"><b class="${a >= 50 ? "w" : "l"}">${a}%</b>${S.without} ${b == null ? "—" : b + "%"}</div>
             <div class="badge ${diff == null ? "z" : diff > 0 ? "p" : diff < 0 ? "n" : "z"}">${diff == null ? "—" : sign(diff)}</div>
           </div>`;
         }).join("")}
       </div>
-      <div class="legend"><span><i style="background:var(--gold)"></i>с предметом</span><span><i style="background:var(--dim)"></i>без него</span><span>справа — разница в п.п.</span></div>
+      <div class="legend"><span><i style="background:var(--gold)"></i>${S.legWith}</span><span><i style="background:var(--dim)"></i>${S.legWithout}</span><span>${S.legDiff}</span></div>
     </div>
-
-    <div class="card c12">
-      <div class="ch"><h2>Матчи</h2><span class="sub">последние ${ms.length}</span></div>
-      <div class="hist-wrap">
-        <table class="h">
-          <thead><tr><th>Герой</th><th>Результат</th><th>Длительность</th><th>KDA</th><th class="c">NW · GPM</th><th>Предметы</th><th class="c">Рейтинг</th><th class="c">Матч</th></tr></thead>
-          <tbody>
-            ${ms.map(m => `
-            <tr class="${m.win ? "win" : "loss"}">
-              <td><div class="hero"><img src="${esc(m.hero_img)}" alt="" loading="lazy"><div><b>${esc(m.hero)}</b><span>${m.side === "radiant" ? "Radiant" : m.side === "dire" ? "Dire" : ""}${m.level ? ` · ур. ${m.level}` : ""}</span></div></div></td>
-              <td><span class="res ${m.win ? "w" : "l"}">${m.win ? "Победа" : "Поражение"}</span><a class="sub" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" title="${when(m.start)}">${ago(m.start)}</a></td>
-              <td>${dur(m.duration)}<div class="sub">${esc(m.type || "")}${m.score ? ` · счёт ${m.score[0]}:${m.score[1]}` : ""}</div></td>
-              <td class="kda"><b>${m.k}</b> / <b class="l">${m.d}</b> / <b>${m.a}</b><div class="sub">KDA ${((m.k + m.a) / Math.max(1, m.d)).toFixed(1)}${m.lh != null ? ` · ${m.lh}/${m.dn}` : ""}</div></td>
-              <td class="c">${m.nw != null ? `<b class="kda">${(m.nw / 1000).toFixed(1)}k</b><div class="sub">${m.gpm} GPM</div>` : `<span class="sub">ждём OpenDota</span>`}</td>
-              <td><div class="inv">${m.items.length ? m.items.map(i => i ? `<img src="${esc(i.img)}" alt="${esc(i.name)}" title="${esc(i.name)}" loading="lazy">` : `<span class="empty"></span>`).join("") + (m.neutral ? `<img class="nt" src="${esc(m.neutral.img)}" alt="${esc(m.neutral.name)}" title="${esc(m.neutral.name)}" loading="lazy">` : "") : `<span class="sub">—</span>`}</div></td>
-              <td class="c"><span class="mm">${fmt(m.mmr_after)}</span><span class="dl ${m.delta > 0 ? "w" : m.delta < 0 ? "l" : "m"}">${m.delta ? sign(m.delta) : "0"}</span></td>
-              <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="Матч ${m.id} на Dotabuff">Dotabuff ↗</a></td>
-            </tr>`).join("")}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    ${d.shame?.length ? `
-    <div class="card c12">
-      <div class="ch"><h2>Позорный зал</h2><span class="sub">топ-${d.shame.length} с ${dShort(d.history_from)} · от 10 смертей, по смертям минус убийства</span></div>
-      <div class="hist-wrap">
-        <table class="h">
-          <thead><tr><th class="c">#</th><th>Герой</th><th>Результат</th><th>Длительность</th><th>KDA</th><th>ID матча</th><th class="c">Матч</th></tr></thead>
-          <tbody>
-            ${d.shame.map((m, i) => `
-            <tr class="${m.win ? "win" : "loss"}">
-              <td class="c"><b class="kda">${i + 1}</b></td>
-              <td><div class="hero"><img src="${esc(m.hero_img)}" alt="" loading="lazy"><div><b>${esc(m.hero)}</b><span>${when(m.start)}</span></div></div></td>
-              <td><span class="res ${m.win ? "w" : "l"}">${m.win ? "Победа" : "Поражение"}</span><div class="sub">${esc(m.type || "")}</div></td>
-              <td>${dur(m.duration)}</td>
-              <td class="kda"><b>${m.k}</b> / <b class="l">${m.d}</b> / <b>${m.a}</b><div class="sub">KDA ${((m.k + m.a) / Math.max(1, m.d)).toFixed(1)}</div></td>
-              <td><code class="mid">${m.id}</code></td>
-              <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="Матч ${m.id} на Dotabuff">Dotabuff ↗</a></td>
-            </tr>`).join("")}
-          </tbody>
-        </table>
-      </div>
-    </div>` : ""}
   </div>
   <p class="foot" id="foot"></p>`;
 
@@ -506,19 +587,20 @@ function render(d) {
 }
 
 function farmTiles(f) {
-  const T = [["GPM", "gpm", 0], ["XPM", "xpm", 0], ["Добивания/мин", "lhm", 1], ["Net worth", "nw", 0, v => (v / 1000).toFixed(1) + "k"], ["KDA", "kda", 1], ["Урон/мин", "hdm", 0]];
-  return T.map(([name, key, digits, show]) => {
+  const T = [["gpm", 0], ["xpm", 0], ["lhm", 1], ["nw", 0, v => (v / 1000).toFixed(1) + "k"], ["kda", 1], ["hdm", 0]];
+  return T.map(([key, digits, show], i) => {
+    const name = S.farmNames[i];
     const v = f.week[key], pv = f.prev[key], all = f.all[key];
     const view = x => x == null ? "—" : show ? show(x) : x.toFixed(digits);
     const dlt = v != null && pv != null ? v - pv : null;
     const dTxt = dlt == null ? "" : `<span class="dl ${dlt > 0 ? "w" : dlt < 0 ? "l" : "m"}">${dlt > 0 ? "+" : dlt < 0 ? "−" : "±"}${show ? show(Math.abs(dlt)) : Math.abs(dlt).toFixed(digits)}</span>`;
-    return `<div class="tile"><span class="k">${name}</span><span class="v">${view(v)}${dTxt}</span><span class="s">за период ${view(all)}</span></div>`;
+    return `<div class="tile"><span class="k">${name}</span><span class="v">${view(v)}${dTxt}</span><span class="s">${S.perPeriod} ${view(all)}</span></div>`;
   }).join("");
 }
 
 function streakTile(name, s, cls) {
   if (!s) return `<div class="tile"><span class="k">${name}</span><span class="v">—</span></div>`;
-  const a = when(s.from).slice(0, 5), b = when(s.to).slice(0, 5);
+  const a = dShort(s.from.slice(0, 10)), b = dShort(s.to.slice(0, 10));
   return `<div class="tile"><span class="k">${name}</span><span class="v ${cls}">${s.n}</span><span class="s">${a === b ? a : `${a}–${b}`}</span></div>`;
 }
 
@@ -539,7 +621,7 @@ function weeksTable(all) {
   // берём на одну неделю больше, чтобы у самой старой из показанных была дельта
   const ws = all.slice(-6), shown = 5;
   const max = Math.max(...ws.slice(-shown).map(w => w.gpm || 0));
-  return `<table class="wtab"><thead><tr><th>Неделя</th><th>Игр</th><th>WR</th><th>GPM</th><th>Δ</th><th>XPM</th></tr></thead><tbody>
+  return `<table class="wtab"><thead><tr>${S.weekCols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>
     ${ws.slice().reverse().map((w, i, arr) => {
       const prev = arr[i + 1];
       const dl = prev && w.gpm != null && prev.gpm != null ? Math.round(w.gpm - prev.gpm) : null;
@@ -558,17 +640,17 @@ function renderRadiance(st) {
   const el = $("#radCard");
   el.innerHTML = `
     <div class="ch"><h2>Radiance</h2>
-      <div class="seg" role="group" aria-label="Выборка">
+      <div class="seg" role="group" aria-label="${S.scope}">
         <button type="button" data-s="spectre" aria-pressed="${radScope === "spectre"}">Spectre</button>
-        <button type="button" data-s="all" aria-pressed="${radScope === "all"}">Все герои</button>
+        <button type="button" data-s="all" aria-pressed="${radScope === "all"}">${S.allHeroes}</button>
       </div>
     </div>
     <div class="duo">
-      <div><div class="hd"><img src="${RAD_IMG}" alt="">с Радиком</div><div class="pc ${a == null ? "muted" : a >= 50 ? "w" : "l"}">${a == null ? "—" : a + "%"}</div><div class="n">${games(r.with.n)} · ${r.with.w}-${r.with.n - r.with.w}</div></div>
-      <div><div class="hd"><span class="x"><img src="${RAD_IMG}" alt=""></span>без Радика</div><div class="pc ${b == null ? "muted" : b >= 50 ? "w" : "l"}">${b == null ? "—" : b + "%"}</div><div class="n">${games(r.without.n)} · ${r.without.w}-${r.without.n - r.without.w}</div></div>
+      <div><div class="hd"><img src="${RAD_IMG}" alt="">${S.withRad}</div><div class="pc ${a == null ? "muted" : a >= 50 ? "w" : "l"}">${a == null ? "—" : a + "%"}</div><div class="n">${games(r.with.n)} · ${r.with.w}-${r.with.n - r.with.w}</div></div>
+      <div><div class="hd"><span class="x"><img src="${RAD_IMG}" alt=""></span>${S.noRad}</div><div class="pc ${b == null ? "muted" : b >= 50 ? "w" : "l"}">${b == null ? "—" : b + "%"}</div><div class="n">${games(r.without.n)} · ${r.without.w}-${r.without.n - r.without.w}</div></div>
     </div>
     <div class="waffle">${r.strip.map(x => `<i class="${x.win ? "w" : ""} ${x.rad ? "r" : ""}"></i>`).join("")}</div>
-    <div class="legend"><span><i style="background:var(--win)"></i>победа</span><span><i style="background:var(--loss)"></i>поражение</span><span><i style="outline:2px solid var(--gold);outline-offset:-2px;background:transparent"></i>куплен Radiance</span></div>`;
+    <div class="legend"><span><i style="background:var(--win)"></i>${S.legWin}</span><span><i style="background:var(--loss)"></i>${S.legLoss}</span><span><i style="outline:2px solid var(--gold);outline-offset:-2px;background:transparent"></i>${S.radBought}</span></div>`;
   el.querySelectorAll("[data-s]").forEach(btn => btn.addEventListener("click", () => { radScope = btn.dataset.s; renderRadiance(st); }));
 }
 
@@ -632,14 +714,14 @@ function drawDays(d) {
   const line = smoothPath(pts.map(p => [x(p.date), y(p.mmr)]));
   const area = line + `L${x(pts[pts.length - 1].date)},${H - B}L${x(pts[0].date)},${H - B}Z`;
   const last = pts[pts.length - 1];
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Рейтинг по дням">
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${S.daily}">
     <defs><linearGradient id="gArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#e3ae45" stop-opacity=".22"/><stop offset="1" stop-color="#e3ae45" stop-opacity="0"/></linearGradient></defs>
     ${g}
-    <text x="${L + 4}" y="${T + 4}">патч 7.41e</text>
+    <text x="${L + 4}" y="${T + 4}">${S.patch}</text>
     <path class="area" d="${area}"/>
     <path class="lineGold" d="${line}"/>
     ${pts.map((p, i) => {
-      const t = p.start ? `<b>${p.mmr}</b><br>до первой игры после патча 7.41e` : `<b>${p.mmr}</b><br>${dShort(p.date)} · <span class="w">${p.w}W</span>–<span class="l">${p.l}L</span> · ${sign(p.mmr - pts[i - 1].mmr)}`;
+      const t = p.start ? `<b>${p.mmr}</b><br>${S.beforePatch}` : `<b>${p.mmr}</b><br>${dShort(p.date)} · <span class="w">${p.w}W</span>–<span class="l">${p.l}L</span> · ${sign(p.mmr - pts[i - 1].mmr)}`;
       return `${p === last ? `<circle class="pt" cx="${x(p.date)}" cy="${y(p.mmr)}" r="5"/>` : ""}<circle class="hit" cx="${x(p.date)}" cy="${y(p.mmr)}" r="12" data-tip="${esc(t)}"/>`;
     }).join("")}
     <text class="lbl-v" x="${x(last.date) - 10}" y="${y(last.mmr) - 12}" text-anchor="end">≈${last.mmr}</text>
@@ -662,20 +744,33 @@ function drawMatches(d) {
   const bars = ms.map((m, i) => {
     const y0 = y(m.mmr_after - m.delta), y1 = y(m.mmr_after);
     const col = m.win ? "#5cbf75" : "#d65c58";
-    const t = `<b class="${m.win ? "w" : "l"}">${m.win ? "Победа" : "Поражение"}</b> · ${esc(m.hero)}<br>${when(m.start)} · ${dur(m.duration)}<br>${m.k}/${m.d}/${m.a}${m.nw ? ` · NW ${(m.nw / 1000).toFixed(1)}k` : ""}<br>рейтинг ${m.mmr_after} (${sign(m.delta)})`;
+    const t = `<b class="${m.win ? "w" : "l"}">${m.win ? S.win : S.loss}</b> · ${esc(m.hero)}<br>${when(m.start)} · ${dur(m.duration)}<br>${m.k}/${m.d}/${m.a}${m.nw ? ` · NW ${(m.nw / 1000).toFixed(1)}k` : ""}<br>${S.ratingTip} ${m.mmr_after} (${sign(m.delta)})`;
     return `<rect x="${cx(i) - Math.min(11, cw / 3)}" y="${Math.min(y0, y1)}" width="${Math.min(22, cw / 1.5)}" height="${Math.max(2, Math.abs(y1 - y0))}" rx="2" fill="${col}" opacity=".75"/>
       <image href="${esc(m.hero_img)}" x="${cx(i) - iw / 2}" y="${H - B + 14}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid slice"/>
       <rect x="${cx(i) - iw / 2}" y="${H - B + 17 + ih}" width="${iw}" height="3" rx="1.5" fill="${col}"/>
       <rect class="hit" x="${cx(i) - cw / 2}" y="${T}" width="${cw}" height="${H - T}" data-tip="${esc(t)}"/>`;
   }).join("");
   const last = ms[n - 1];
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Рейтинг по последним матчам">
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${S.matchAria}">
     ${g}${bars}
     <path class="lineGold" d="${line}" pointer-events="none"/>
     ${ms.map((m, i) => `<circle class="pt" cx="${cx(i)}" cy="${y(m.mmr_after)}" r="${i === n - 1 ? 5 : 3}" pointer-events="none"/>`).join("")}
     <text class="lbl-v" x="${cx(n - 1) - 8}" y="${y(last.mmr_after) - 12}" text-anchor="end">≈${last.mmr_after}</text>
   </svg>`;
 }
+
+function applyLang(next) {
+  lang = next;
+  S = I18N[lang];
+  try { localStorage.setItem("lang", lang); } catch {}
+  document.documentElement.lang = lang;
+  $("#name").textContent = S.name;
+  document.title = DATA ? `${S.name}: ${DATA.mmr} ${S.mmr}` : S.name;
+  document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  if (DATA) render(DATA); else $("#app .err").textContent = S.loading;
+}
+document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => applyLang(b.dataset.lang)));
+applyLang(lang);
 
 load();
 setInterval(load, 5 * 60000);
