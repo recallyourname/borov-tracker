@@ -120,7 +120,8 @@ CAL_RE = re.compile(
 def scrape_dotabuff():
     html = get(
         f"https://r.jina.ai/https://www.dotabuff.com/players/{ACCOUNT}",
-        headers={"X-Return-Format": "html"},
+        # Без X-No-Cache jina отдаёт снимок страницы из своего кэша, и свежие матчи приходят с опозданием.
+        headers={"X-Return-Format": "html", "X-No-Cache": "true"},
         timeout=120,
     )
     # Вместо профиля может прийти заглушка Cloudflare — тогда считаем, что данных нет.

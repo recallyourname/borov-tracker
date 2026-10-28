@@ -209,6 +209,9 @@ table.h td.c, table.h th.c { text-align: right; }
 .dl.m { background: var(--panel-2); color: var(--muted); }
 td a { color: var(--muted); text-decoration: none; }
 td a:hover { color: var(--text); text-decoration: underline; }
+td a.db { display: inline-block; font: 600 13px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+td a.db:hover { border-color: var(--gold); color: var(--gold); text-decoration: none; }
+td a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 
 .foot { font-size: 13px; color: var(--muted); padding: 4px 0 28px; }
 .foot b { color: var(--text); font-weight: 600; }
@@ -435,7 +438,7 @@ function render(d) {
       <div class="ch"><h2>Матчи</h2><span class="sub">последние ${ms.length}</span></div>
       <div class="hist-wrap">
         <table class="h">
-          <thead><tr><th>Герой</th><th>Результат</th><th>Длительность</th><th>KDA</th><th class="c">NW · GPM</th><th>Предметы</th><th class="c">Рейтинг</th></tr></thead>
+          <thead><tr><th>Герой</th><th>Результат</th><th>Длительность</th><th>KDA</th><th class="c">NW · GPM</th><th>Предметы</th><th class="c">Рейтинг</th><th class="c">Матч</th></tr></thead>
           <tbody>
             ${ms.map(m => `
             <tr class="${m.win ? "win" : "loss"}">
@@ -446,6 +449,7 @@ function render(d) {
               <td class="c">${m.nw != null ? `<b class="kda">${(m.nw / 1000).toFixed(1)}k</b><div class="sub">${m.gpm} GPM</div>` : `<span class="sub">ждём OpenDota</span>`}</td>
               <td><div class="inv">${m.items.length ? m.items.map(i => i ? `<img src="${esc(i.img)}" alt="${esc(i.name)}" title="${esc(i.name)}" loading="lazy">` : `<span class="empty"></span>`).join("") + (m.neutral ? `<img class="nt" src="${esc(m.neutral.img)}" alt="${esc(m.neutral.name)}" title="${esc(m.neutral.name)}" loading="lazy">` : "") : `<span class="sub">—</span>`}</div></td>
               <td class="c"><span class="mm">${fmt(m.mmr_after)}</span><span class="dl ${m.delta > 0 ? "w" : m.delta < 0 ? "l" : "m"}">${m.delta ? sign(m.delta) : "0"}</span></td>
+              <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="Матч ${m.id} на Dotabuff">Dotabuff ↗</a></td>
             </tr>`).join("")}
           </tbody>
         </table>
