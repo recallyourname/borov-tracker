@@ -9,6 +9,7 @@
 База: data/borov.db (matches, calendar, kv). Старые матчи заливаются scripts/import.py.
 """
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -34,6 +35,8 @@ FORM = 50  # по скольким последним ранкед-играм с
 OD_PER_RUN = 40  # сколько матчей без деталей догружать из OpenDota за один запуск
 CDN = "https://cdn.cloudflare.steamstatic.com"
 UA = {"User-Agent": "borov-tracker/1.0 (+github actions)"}
+# С ключом jina ходит через свои резидентные IP, и Cloudflare Dotabuff пускает свежие запросы.
+JINA_KEY = os.environ.get("JINA_API_KEY")
 RADIANCE = 137
 # Расходники и мелочь, которые не считаем «популярными предметами».
 SKIP_ITEMS = {"tpscroll", "branches", "ward_observer", "ward_sentry", "ward_dispenser", "dust", "smoke_of_deceit",
@@ -124,7 +127,8 @@ def scrape_dotabuff():
         rows, cal = parse_dotabuff(get(
             f"https://r.jina.ai/https://www.dotabuff.com/players/{ACCOUNT}",
             # Без X-No-Cache jina отдаёт снимок страницы из своего кэша, и свежие матчи приходят с опозданием.
-            headers={"X-Return-Format": "html", **({"X-No-Cache": "true"} if fresh else {})},
+            headers={"X-Return-Format": "html", **({"X-No-Cache": "true"} if fresh else {}),
+                     **({"Authorization": f"Bearer {JINA_KEY}"} if JINA_KEY else {})},
             timeout=120,
         ))
         if rows:
@@ -138,7 +142,8 @@ def parse_dotabuff(html):
         return None, None
     rows = []
     section = html[html.find("Latest Matches"):]
-    for chunk in section.split('<div class="r-row">')[1:]:
+    # Если страница прошла через JS (рендер с ключом jina), у строк класс "r-row " с пробелом.
+    for chunk in re.split(r'<div class="r-row\s*">', section)[1:]:
         m = ROW_RE.search(chunk)
         if not m:
             continue

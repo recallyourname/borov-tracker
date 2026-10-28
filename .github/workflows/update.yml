@@ -32,6 +32,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/update.py
+        env:
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
