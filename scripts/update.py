@@ -118,12 +118,20 @@ CAL_RE = re.compile(
 
 
 def scrape_dotabuff():
-    html = get(
-        f"https://r.jina.ai/https://www.dotabuff.com/players/{ACCOUNT}",
-        # Без X-No-Cache jina отдаёт снимок страницы из своего кэша, и свежие матчи приходят с опозданием.
-        headers={"X-Return-Format": "html", "X-No-Cache": "true"},
-        timeout=120,
-    )
+    """(rows, cal, fresh). Сначала свежая страница; если Cloudflare не пустил jina — её последний снимок из кэша."""
+    for fresh in (True, False):
+        rows, cal = parse_dotabuff(get(
+            f"https://r.jina.ai/https://www.dotabuff.com/players/{ACCOUNT}",
+            # Без X-No-Cache jina отдаёт снимок страницы из своего кэша, и свежие матчи приходят с опозданием.
+            headers={"X-Return-Format": "html", **({"X-No-Cache": "true"} if fresh else {})},
+            timeout=120,
+        ))
+        if rows:
+            return rows, cal, fresh
+    return None, None, False
+
+
+def parse_dotabuff(html):
     # Вместо профиля может прийти заглушка Cloudflare — тогда считаем, что данных нет.
     if not html or "Latest Matches" not in html:
         return None, None
@@ -221,12 +229,17 @@ def fill_details(db, limit):
 
 def main(od_limit=OD_PER_RUN):
     db = connect()
-    rows, cal = scrape_dotabuff()
-    kv_set(db, "scrape_status", "unavailable" if rows is None else "ok")
+    rows, cal, fresh = scrape_dotabuff()
+    if rows and not fresh:
+        # Снимок из кэша нужен, только если в нём есть новые матчи: старый откатил бы календарь за сегодня.
+        known = {r["id"] for r in db.execute("select id from matches")}
+        if all(r["id"] in known for r in rows):
+            rows = None
+    kv_set(db, "scrape_status", "unavailable" if rows is None else "ok" if fresh else "cached")
     if rows is None:
         print("::warning::Dotabuff unavailable, keeping previous data", file=sys.stderr)
     else:
-        print(f"dotabuff: {len(rows)} matches, {len(cal)} calendar days")
+        print(f"dotabuff{'' if fresh else ' (jina cache)'}: {len(rows)} matches, {len(cal)} calendar days")
         for r in rows:
             upsert_basic(db, r, "dotabuff-main")
         db.executemany("insert or replace into calendar(date, w, l) values(?, ?, ?)", [(k, w, l) for k, (w, l) in cal.items()])

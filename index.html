@@ -307,13 +307,14 @@ function tickLive() {
   const due = left <= 0;
   const txt = due ? "ожидаем обновление" : `${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, "0")}`;
   const sourceFailed = DATA.scrape_status === "unavailable";
+  const sourceCached = DATA.scrape_status === "cached";
   const sourceStale = !DATA.scraped_at || Date.now() - new Date(DATA.scraped_at) > 45 * 60000;
   $("#schedule").textContent = due ? "Плановое обновление" : "До планового обновления";
   $("#timer").textContent = txt;
   $("#live").classList.toggle("due", due);
   $("#live").classList.toggle("stale", sourceFailed || sourceStale || Date.now() - new Date(DATA.updated_at) > 45 * 60000);
   $("#upd").textContent = `Пересчёт: ${ago(DATA.updated_at)}`;
-  $("#source").textContent = `Данные Dotabuff: ${DATA.scraped_at ? ago(DATA.scraped_at) : "ещё не получены"}${sourceFailed ? " · источник недоступен" : ""}`;
+  $("#source").textContent = `Данные Dotabuff: ${DATA.scraped_at ? ago(DATA.scraped_at) : "ещё не получены"}${sourceFailed ? " · источник недоступен" : sourceCached ? " · снимок из кэша jina" : ""}`;
   const foot = $("#foot");
   if (foot) foot.innerHTML = `Пересчёт: <b>${when(DATA.updated_at)}</b> · данные Dotabuff: <b>${DATA.scraped_at ? when(DATA.scraped_at) : "—"}</b>${sourceFailed ? " · Dotabuff недоступен, сохранены предыдущие данные" : ""} · плановое обновление: <b>${txt}</b>`;
   // как только слот прошёл — раз в минуту проверяем, не появились ли новые данные
