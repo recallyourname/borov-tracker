@@ -80,6 +80,7 @@ a { color: inherit; }
 .rank span { font-size: 13px; color: var(--muted); }
 .goal { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
 .goal > b { font: 700 28px var(--f-head); line-height: 1.05; color: var(--text); }
+.mid { font: 500 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); user-select: all; }
 .goal span { font-size: 13px; color: var(--muted); }
 .goal .sep-dot { flex-basis: 100%; }
 .deltas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -470,6 +471,28 @@ function render(d) {
         </table>
       </div>
     </div>
+
+    ${d.shame?.length ? `
+    <div class="card c12">
+      <div class="ch"><h2>Позорный зал</h2><span class="sub">топ-${d.shame.length} с ${dShort(d.history_from)} · от 10 смертей, по смертям минус убийства</span></div>
+      <div class="hist-wrap">
+        <table class="h">
+          <thead><tr><th class="c">#</th><th>Герой</th><th>Результат</th><th>Длительность</th><th>KDA</th><th>ID матча</th><th class="c">Матч</th></tr></thead>
+          <tbody>
+            ${d.shame.map((m, i) => `
+            <tr class="${m.win ? "win" : "loss"}">
+              <td class="c"><b class="kda">${i + 1}</b></td>
+              <td><div class="hero"><img src="${esc(m.hero_img)}" alt="" loading="lazy"><div><b>${esc(m.hero)}</b><span>${when(m.start)}</span></div></div></td>
+              <td><span class="res ${m.win ? "w" : "l"}">${m.win ? "Победа" : "Поражение"}</span><div class="sub">${esc(m.type || "")}</div></td>
+              <td>${dur(m.duration)}</td>
+              <td class="kda"><b>${m.k}</b> / <b class="l">${m.d}</b> / <b>${m.a}</b><div class="sub">KDA ${((m.k + m.a) / Math.max(1, m.d)).toFixed(1)}</div></td>
+              <td><code class="mid">${m.id}</code></td>
+              <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="Матч ${m.id} на Dotabuff">Dotabuff ↗</a></td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ""}
   </div>
   <p class="foot" id="foot"></p>`;
 

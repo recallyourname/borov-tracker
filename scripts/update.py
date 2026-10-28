@@ -31,6 +31,8 @@ BASE_DATE = BASE_TS[:10]
 HISTORY_FROM = "2026-07-31"
 STEP = 25
 KEEP = 20
+SHAME = 10  # сколько позорных матчей показывать; позорный — от 10 смертей, сортировка по смертям минус убийства
+SHAME_MIN_D = 10
 FORM = 50  # по скольким последним ранкед-играм считать винрейт для прогноза до 7к
 OD_PER_RUN = 40  # сколько матчей без деталей догружать из OpenDota за один запуск
 CDN = "https://cdn.cloudflare.steamstatic.com"
@@ -298,6 +300,11 @@ def build_output(db, const):
             "delta": m["delta"], "mmr_after": m["mmr_after"],
         })
 
+    shame = sorted((m for m in all_rows if (m["d"] or 0) >= SHAME_MIN_D),
+                   key=lambda m: (-(m["d"] - m["k"]), -m["d"], m["start"]))[:SHAME]
+    shame = [{f: m[f] for f in ("id", "start", "hero", "hero_img", "type", "duration", "k", "d", "a")} | {"win": bool(m["win"])}
+             for m in shame]
+
     return {
         "account_id": ACCOUNT,
         "profile": kv_get(db, "profile", {}),
@@ -309,6 +316,7 @@ def build_output(db, const):
         "mmr": current,
         "days": days,
         "matches": recent,
+        "shame": shame,
         "form": {"n": len(ranked := [m for m in all_rows if m["type"] == "Ranked"][:FORM]),
                  "w": sum(m["win"] for m in ranked)},
         "stats": period_stats(all_rows, items, days),
