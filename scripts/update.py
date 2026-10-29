@@ -35,6 +35,7 @@ SHAME = 10  # сколько позорных матчей показывать;
 SHAME_MIN_D = 10
 FORM = 50  # по скольким последним ранкед-играм считать винрейт для прогноза до 7к
 OD_PER_RUN = 40  # сколько матчей без деталей догружать из OpenDota за один запуск
+OD_RETRY_DAYS = 3  # матчи моложе стольких дней перезапрашиваем в OpenDota без лимита попыток
 REFILL_PER_RUN = 150  # сколько старых матчей перезапрашивать ради региона и составов за один запуск, пока не догрузим все
 CDN = "https://cdn.cloudflare.steamstatic.com"
 UA = {"User-Agent": "borov-tracker/1.0 (+github actions)"}
@@ -248,8 +249,12 @@ def apply_opendota(db, mid, d):
 
 
 def fill_details(db, limit):
+    # Свежие матчи OpenDota может отдавать с задержкой, а прогоны после пушей идут подряд и быстро сжигают попытки —
+    # поэтому матчи младше OD_RETRY_DAYS перезапрашиваем без лимита.
+    recent = (datetime.now(timezone.utc) - timedelta(days=OD_RETRY_DAYS)).isoformat(timespec="seconds")
     todo = db.execute(
-        "select id from matches where od_done=0 and od_tries<8 order by start desc limit ?", (limit,)
+        "select id from matches where od_done=0 and (od_tries<8 or start>=?) order by start desc limit ?",
+        (recent, limit),
     ).fetchall()
     for r in todo:
         d = get_json(f"https://api.opendota.com/api/matches/{r['id']}")
