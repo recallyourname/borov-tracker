@@ -188,18 +188,16 @@ def upsert_basic(db, r, source):
 
 def load_constants(db):
     const = kv_get(db, "const")
-    if const and "clusters" in const and const.get("ts", 0) > time.time() - 7 * 86400:
+    if const and "regions" in const and const.get("ts", 0) > time.time() - 7 * 86400:
         return const
     heroes = get_json("https://api.opendota.com/api/constants/heroes")
     items = get_json("https://api.opendota.com/api/constants/items")
     regions = get_json("https://api.opendota.com/api/constants/region")
-    clusters = get_json("https://api.opendota.com/api/constants/cluster")
-    if not (heroes and items and regions and clusters):
-        return const or {"heroes": {}, "items": {}, "regions": {}, "clusters": {}}
+    if not (heroes and items and regions):
+        return const or {"heroes": {}, "items": {}, "regions": {}}
     const = {
         "ts": int(time.time()),
         "regions": {k: region_name(v) for k, v in regions.items()},
-        "clusters": clusters,
         "heroes": {str(h["id"]): {"name": h["localized_name"], "img": CDN + h["img"].split("?")[0]} for h in heroes.values()},
         "items": {str(v["id"]): {"key": k, "name": v.get("dname") or k, "img": CDN + v["img"].split("?")[0]}
                   for k, v in items.items() if v.get("id") is not None and v.get("img")},
@@ -351,7 +349,7 @@ def build_output(db, const):
         "shame": shame,
         "form": {"n": len(ranked := [m for m in all_rows if m["type"] == "Ranked"][:FORM]),
                  "w": sum(m["win"] for m in ranked)},
-        "stats": period_stats(all_rows, items, days, const.get("regions", {}), const.get("clusters", {})),
+        "stats": period_stats(all_rows, items, days, const.get("regions", {})),
     }
 
 
@@ -406,36 +404,33 @@ def rating_series(rows, cal):
     return {"start": start_mmr, "points": points}, current
 
 
-# Часть света по id региона OpenDota (constants/region).
+# Часть света по id региона (constants/region + регионы из regions.txt Valve, которых ещё нет в API OpenDota).
 REGION_GROUP = {
-    1: "na", 2: "na",
-    3: "eu", 8: "eu", 9: "eu",
+    1: "na", 2: "na", 27: "na", 31: "na",
+    3: "eu", 8: "eu", 9: "eu", 28: "eu",
     10: "sa", 14: "sa", 15: "sa", 38: "sa",
-    5: "asia", 16: "asia", 19: "asia", 37: "asia",
+    5: "asia", 16: "asia", 19: "asia", 24: "asia", 37: "asia",
     12: "cn", 13: "cn", 17: "cn", 18: "cn", 20: "cn", 25: "cn",
     6: "me", 7: "oce", 11: "af",
 }
+NEW_REGIONS = {"24": "Hong Kong", "27": "US North Central", "28": "Warsaw", "31": "US South Central"}
+# Новые кластеры, которых нет в constants/cluster OpenDota. Источники: имена серверов из odota/core#2986
+# (srcds…-waw2.189 / .436 — Варшава, srcds…-dfw2.407 — Даллас), dotaconstants (410 — US East)
+# и страницы матчей Stratz (129, 404–406 — Америка). 190 — сосед 189, Варшава по предположению;
+# 404–406 стоят в одном блоке с далласким 407.
+NEW_CLUSTERS = {129: 2, 189: 28, 190: 28, 436: 28, 404: 31, 405: 31, 406: 31, 407: 31, 410: 2}
 
 
-def cluster_region(cluster, clusters):
-    """Регион нового кластера по соседям: Valve нумерует кластеры десятками (121–124 — US East).
-    Если в десятке все известные кластеры из одного региона — берём его, иначе None."""
-    if cluster is None:
-        return None
-    near = {r for c, r in clusters.items() if int(c) // 10 == cluster // 10}
-    return near.pop() if len(near) == 1 else None
-
-
-def region_stats(rows, regions, clusters):
+def region_stats(rows, regions):
     """Винрейт ранкеда по частям света, внутри — по регионам сервера."""
     by = {}
     for m in rows:
         if m["region"] is None:
             continue
-        rid = m["region"] if m["region"] >= 0 else cluster_region(m["cluster"], clusters)
-        # Кластеры, которых нет ни у OpenDota, ни в известной десятке, идут в группу «другие» (group None).
+        rid = m["region"] if m["region"] >= 0 else NEW_CLUSTERS.get(m["cluster"])
+        # Кластеры, которых нет ни у OpenDota, ни в NEW_CLUSTERS, идут в группу «другие» (group None).
         group = REGION_GROUP.get(rid)
-        name = regions.get(str(rid)) if group else None
+        name = (regions.get(str(rid)) or NEW_REGIONS.get(str(rid))) if group else None
         g = by.setdefault(group, {"group": group, "n": 0, "w": 0, "parts": {}})
         r = g["parts"].setdefault(name, {"region": name, "n": 0, "w": 0, "clusters": set()})
         for x in (g, r):
@@ -451,7 +446,7 @@ def region_stats(rows, regions, clusters):
     return out
 
 
-def period_stats(rows, items, days, regions, clusters):
+def period_stats(rows, items, days, regions):
     """Статистика по всем ранкед-матчам базы с HISTORY_FROM."""
     rows = [m for m in rows if m["type"] == "Ranked"]
     days = days["points"]
@@ -509,7 +504,7 @@ def period_stats(rows, items, days, regions, clusters):
         "farm": farm_stats(detailed),
         "weeks": week_stats(detailed),
         "streaks": streak_stats(rows),
-        "regions": region_stats(rows, regions, clusters),
+        "regions": region_stats(rows, regions),
     }
 
 
