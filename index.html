@@ -49,6 +49,14 @@ a { color: inherit; }
 .who .meta { color: var(--muted); font-size: 13px; display: flex; gap: 6px 16px; flex-wrap: wrap; margin-top: 6px; }
 .who .meta a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
 .who .meta a:hover { color: var(--text); }
+.who .meta a.tw { display: inline-flex; align-items: center; gap: 5px; }
+.tw svg { width: 13px; height: 13px; fill: #9146ff; }
+.tws { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.tws.on { color: #ff4d4d; font-weight: 600; }
+.tws.on::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff4d4d; animation: twpulse 1.6s ease-in-out infinite; }
+@keyframes twpulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .tws.on::before { animation: none; } }
+.tws:empty { display: none; }
 .live { margin-left: auto; display: grid; justify-items: end; gap: 2px; font-size: 13px; color: var(--muted); }
 .live .dot { display: inline-flex; align-items: center; gap: 8px; font: 600 15px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .live .dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--win); box-shadow: 0 0 0 0 #5cbf7580; animation: pulse 2s infinite; }
@@ -268,6 +276,10 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
         <span>ID 226241953</span>
         <a href="https://www.dotabuff.com/players/226241953" target="_blank" rel="noopener">Dotabuff</a>
         <a href="https://www.opendota.com/players/226241953" target="_blank" rel="noopener">OpenDota</a>
+        <a class="tw" id="twitch" href="https://www.twitch.tv/tupa_borov" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+          Twitch<span class="tws" id="twStatus"></span>
+        </a>
         <div class="seg lang" role="group" aria-label="Язык / Idioma">
           <button type="button" data-lang="ru">RU</button>
           <button type="button" data-lang="es">ES</button>
@@ -294,6 +306,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const I18N = {
   ru: {
+    twLive: up => `в эфире ${up}`, twOff: "офлайн", hr: "ч", min: "м",
     locale: "ru-RU", name: "ТУПА БОРАВ", mmr: "ММР", loading: "Загружаю данные…",
     loadErr: e => `Не удалось загрузить data.json (${e}). Попробую ещё раз через минуту.`,
     justNow: "только что", minAgo: m => `${m} мин назад`, hAgo: (h, m) => `${h} ч ${m} мин назад`, dAgo: d => `${d} дн назад`,
@@ -334,6 +347,7 @@ const I18N = {
     scope: "Выборка", allHeroes: "Все герои", withRad: "с Радиком", noRad: "без Радика", radBought: "куплен Radiance",
   },
   es: {
+    twLive: up => `en directo ${up}`, twOff: "desconectado", hr: "h", min: "min",
     locale: "es-ES", name: "PUTA MADRE BASURO", mmr: "MMR", loading: "Cargando datos…",
     loadErr: e => `No se pudo cargar data.json (${e}). Reintento en un minuto.`,
     justNow: "ahora mismo", minAgo: m => `hace ${m} min`, hAgo: (h, m) => `hace ${h} h ${m} min`, dAgo: d => `hace ${d} d`,
@@ -833,6 +847,30 @@ function applyLang(next) {
   document.title = DATA ? `${S.name}: ${DATA.mmr} ${S.mmr}` : S.name;
   document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
   if (DATA) render(DATA); else $("#app .err").textContent = S.loading;
+  showTwitch();
+}
+
+// Статус стрима: у Twitch API нужен токен, decapi.me отдаёт его без ключа и с CORS.
+// Ответ — «tupa_borov is offline» или аптайм вида «2 hours, 15 minutes, 3 seconds».
+let twitch = null;
+async function loadTwitch() {
+  try {
+    const r = await fetch("https://decapi.me/twitch/uptime/tupa_borov", { cache: "no-store" });
+    const t = (await r.text()).trim();
+    if (!r.ok) throw new Error(r.status);
+    if (/offline/i.test(t)) twitch = { live: false };
+    else {
+      const h = +(t.match(/(\d+) hour/) || [0, 0])[1], m = +(t.match(/(\d+) minute/) || [0, 0])[1];
+      twitch = /second|minute|hour/.test(t) ? { live: true, h, m } : null;
+    }
+  } catch { twitch = null; }
+  showTwitch();
+}
+function showTwitch() {
+  const el = $("#twStatus");
+  if (!el) return;
+  el.className = "tws" + (twitch?.live ? " on" : "");
+  el.textContent = !twitch ? "" : twitch.live ? S.twLive(twitch.h ? `${twitch.h}${S.hr} ${twitch.m}${S.min}` : `${twitch.m}${S.min}`) : S.twOff;
 }
 document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => applyLang(b.dataset.lang)));
 applyLang(lang);
@@ -868,6 +906,8 @@ function drawRegions(rs) {
 
 load();
 setInterval(load, 5 * 60000);
+loadTwitch();
+setInterval(loadTwitch, 2 * 60000);
 setInterval(tickLive, 1000);
 </script>
 </body>
