@@ -156,6 +156,11 @@ svg .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .hrow .wlc { font-size: 13px; color: var(--muted); text-align: right; }
 .pct { font: 700 20px var(--f-head); text-align: right; }
 
+/* vs */
+.vscols { display: grid; gap: 18px; }
+.vscols .lbl { margin-bottom: 4px; }
+@media (min-width: 821px) { .vscols { grid-template-columns: 1fr 1fr; column-gap: 32px; } }
+
 /* items */
 .ilist { display: grid; gap: 2px; }
 .irow { display: grid; grid-template-columns: 40px minmax(0, 1fr) 58px 60px; gap: 12px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
@@ -322,6 +327,9 @@ const I18N = {
     regions: "Винрейт по регионам", regionsSub: (n, d) => `ранкед с ${d} · ${n} с известным регионом`,
     otherRegion: "Другие", clusters: "кластеры", unknownSrv: "неизвестный сервер",
     groups: { eu: "Европа", na: "Сев. Америка", sa: "Юж. Америка", asia: "Азия", cn: "Китай", me: "Ближний Восток", oce: "Океания", af: "Африка" },
+    vs: "Противники", vsTab: "против", withTab: "в команде", worst: "Хуже всего", best: "Лучше всего",
+    vsSub: (n, min) => `ранкед · ${n} с составами · герои от ${min} игр`,
+    vsWait: n => `составы догружаются из OpenDota (${n} готово), обновится в течение часа`,
     regionsWait: "регионы матчей догружаются из OpenDota, появятся в течение пары часов",
     scope: "Выборка", allHeroes: "Все герои", withRad: "с Радиком", noRad: "без Радика", radBought: "куплен Radiance",
   },
@@ -359,6 +367,9 @@ const I18N = {
     regions: "Winrate por región", regionsSub: (n, d) => `clasificatorias desde ${d} · ${n} con región conocida`,
     otherRegion: "Otras", clusters: "clústeres", unknownSrv: "servidor desconocido",
     groups: { eu: "Europa", na: "Norteamérica", sa: "Sudamérica", asia: "Asia", cn: "China", me: "Oriente Medio", oce: "Oceanía", af: "África" },
+    vs: "Rivales", vsTab: "contra", withTab: "en equipo", worst: "Peor", best: "Mejor",
+    vsSub: (n, min) => `clasificatorias · ${n} con alineaciones · héroes desde ${min} partidas`,
+    vsWait: n => `las alineaciones se están cargando desde OpenDota (${n} listas), se actualizará en una hora`,
     regionsWait: "las regiones se están cargando desde OpenDota, aparecerán en un par de horas",
     scope: "Muestra", allHeroes: "Todos", withRad: "con Radiance", noRad: "sin Radiance", radBought: "compró Radiance",
   },
@@ -388,7 +399,8 @@ const RANKS = ["", "Herald", "Guardian", "Crusader", "Archon", "Legend", "Ancien
 const RAD_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/radiance.png";
 
 let DATA = null;
-let radScope = "spectre";
+let radScope = "spectre", vsScope = "vs";
+const VS_MIN = 15;  // меньше игр против героя — винрейт слишком шумный
 
 async function load() {
   try {
@@ -546,6 +558,8 @@ function render(d) {
 
     <div class="card acc-gold c4 wide-m" id="radCard"></div>
 
+    <div class="card c12" id="vsCard"></div>
+
     <div class="card c12">
       <div class="ch"><h2>${S.matches}</h2><span class="sub">${S.lastLc(ms.length)}</span></div>
       <div class="hist-wrap">
@@ -595,6 +609,7 @@ function render(d) {
   <p class="foot" id="foot"></p>`;
 
   renderRadiance(st);
+  renderVs(st);
   drawDays(d);
   drawMatches(d);
   drawRegions(st.regions || []);
@@ -670,6 +685,38 @@ function renderRadiance(st) {
     <div class="waffle">${r.strip.map(x => `<i class="${x.win ? "w" : ""} ${x.rad ? "r" : ""}"></i>`).join("")}</div>
     <div class="legend"><span><i style="background:var(--win)"></i>${S.legWin}</span><span><i style="background:var(--loss)"></i>${S.legLoss}</span><span><i style="outline:2px solid var(--gold);outline-offset:-2px;background:transparent"></i>${S.radBought}</span></div>`;
   el.querySelectorAll("[data-s]").forEach(btn => btn.addEventListener("click", () => { radScope = btn.dataset.s; renderRadiance(st); }));
+}
+
+function renderVs(st) {
+  const el = $("#vsCard");
+  const done = st.lineups || 0;
+  // пока бэкфилл не прошёл хотя бы большую часть матчей, цифры врут — показываем прогресс
+  const ready = done >= st.games * .9;
+  const list = (st[vsScope] || []).filter(h => h.n >= VS_MIN).map(h => ({ ...h, wr: h.w / h.n }));
+  const worst = [...list].sort((a, b) => a.wr - b.wr || b.n - a.n).slice(0, 10);
+  const best = [...list].sort((a, b) => b.wr - a.wr || b.n - a.n).slice(0, 10);
+  const row = h => {
+    const wr = Math.round(h.wr * 100);
+    return `<div class="hrow">
+      <img src="${esc(h.img)}" alt="" loading="lazy">
+      <div><div class="nm">${esc(h.hero)}</div><div class="bar"><span class="bw" style="flex:${h.w}"></span><span class="bl" style="flex:${h.n - h.w}"></span></div></div>
+      <div class="wlc">${games(h.n)}<br>${h.w}-${h.n - h.w}</div>
+      <div class="pct ${wr >= 50 ? "w" : "l"}">${wr}%</div>
+    </div>`;
+  };
+  el.innerHTML = `
+    <div class="ch"><h2>${S.vs}</h2>
+      <span class="sub">${ready ? S.vsSub(done, VS_MIN) : ""}</span>
+      <div class="seg" role="group" aria-label="${S.vs}">
+        <button type="button" data-v="vs" aria-pressed="${vsScope === "vs"}">${S.vsTab}</button>
+        <button type="button" data-v="with" aria-pressed="${vsScope === "with"}">${S.withTab}</button>
+      </div>
+    </div>
+    ${ready ? `<div class="vscols">
+      <div><div class="lbl">${S.worst}</div>${worst.map(row).join("")}</div>
+      <div><div class="lbl">${S.best}</div>${best.map(row).join("")}</div>
+    </div>` : `<p class="sub">${S.vsWait(done)}</p>`}`;
+  el.querySelectorAll("[data-v]").forEach(btn => btn.addEventListener("click", () => { vsScope = btn.dataset.v; renderVs(st); }));
 }
 
 const tip = $("#tip");

@@ -35,7 +35,7 @@ SHAME = 10  # сколько позорных матчей показывать;
 SHAME_MIN_D = 10
 FORM = 50  # по скольким последним ранкед-играм считать винрейт для прогноза до 7к
 OD_PER_RUN = 40  # сколько матчей без деталей догружать из OpenDota за один запуск
-REGION_PER_RUN = 150  # сколько старых матчей перезапрашивать ради региона за один запуск, пока не догрузим все
+REFILL_PER_RUN = 150  # сколько старых матчей перезапрашивать ради региона и составов за один запуск, пока не догрузим все
 CDN = "https://cdn.cloudflare.steamstatic.com"
 UA = {"User-Agent": "borov-tracker/1.0 (+github actions)"}
 # С ключом jina ходит через свои резидентные IP, и Cloudflare Dotabuff пускает свежие запросы.
@@ -64,6 +64,8 @@ create table if not exists matches (
   neutral integer,
   purchased text,                 -- json: ключи всех купленных предметов (purchase_log), если матч распаршен
   score text,                     -- json [свои, чужие]
+  allies text,                    -- json: id героев союзников
+  enemies text,                   -- json: id героев противников
   region integer,                 -- регион сервера по OpenDota (constants/region), -1 — OpenDota не знает
   cluster integer,                -- кластер сервера; по нему подписываем матчи с неизвестным регионом
   od_done integer default 0,
@@ -101,11 +103,11 @@ def connect():
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA)
-    # Колонки region и cluster добавили позже — в старой базе их нет.
+    # Колонки region, cluster, allies и enemies добавили позже — в старой базе их нет.
     cols = {r["name"] for r in db.execute("pragma table_info(matches)")}
-    for col in ("region", "cluster"):
+    for col, typ in (("region", "integer"), ("cluster", "integer"), ("allies", "text"), ("enemies", "text")):
         if col not in cols:
-            db.execute(f"alter table matches add column {col} integer")
+            db.execute(f"alter table matches add column {col} {typ}")
     return db
 
 
@@ -206,6 +208,14 @@ def load_constants(db):
     return const
 
 
+def lineup(d, p):
+    """Герои союзников и противников игрока p — json-строки для колонок allies и enemies."""
+    radiant = p["player_slot"] < 128
+    allies = [x["hero_id"] for x in d["players"] if (x["player_slot"] < 128) == radiant and x is not p]
+    enemies = [x["hero_id"] for x in d["players"] if (x["player_slot"] < 128) != radiant]
+    return json.dumps(allies), json.dumps(enemies)
+
+
 def apply_opendota(db, mid, d):
     """Записывает детали матча из ответа OpenDota /matches/{id}. True, если игрок найден."""
     if not d or not d.get("players"):
@@ -218,7 +228,7 @@ def apply_opendota(db, mid, d):
     purchased = sorted({x["key"] for x in (p.get("purchase_log") or [])}) or None
     db.execute(
         """update matches set hero_id=?, side=?, win=?, duration=?, level=?, net_worth=?, gpm=?, xpm=?, lh=?, dn=?,
-             hero_damage=?, items=?, backpack=?, neutral=?, purchased=?, score=?, region=?, cluster=?, od_done=1,
+             hero_damage=?, items=?, backpack=?, neutral=?, purchased=?, score=?, region=?, cluster=?, allies=?, enemies=?, od_done=1,
              k=?, d=?, a=?, type=coalesce(type, ?)
            where id=?""",
         (p.get("hero_id"), "radiant" if radiant else "dire", int(d["radiant_win"] == radiant), d.get("duration"),
@@ -229,7 +239,7 @@ def apply_opendota(db, mid, d):
          p.get("item_neutral") or 0,
          json.dumps(purchased) if purchased else None,
          json.dumps(score if radiant else score[::-1]),
-         d["region"] if d.get("region") is not None else -1, d.get("cluster"),
+         d["region"] if d.get("region") is not None else -1, d.get("cluster"), *lineup(d, p),
          p.get("kills"), p.get("deaths"), p.get("assists"),
          "Ranked" if d.get("lobby_type") == 7 else None,
          mid),
@@ -250,19 +260,20 @@ def fill_details(db, limit):
     return len(todo)
 
 
-def fill_regions(db, limit):
-    """Регион не сохраняли для матчей, загруженных до его появления, — перезапрашиваем их понемногу."""
+def refill(db, limit):
+    """Регион и составы не сохраняли для матчей, загруженных до их появления, — перезапрашиваем понемногу."""
     todo = db.execute(
-        "select id from matches where od_done=1 and (region is null or region < 0 and cluster is null)"
+        "select id from matches where od_done=1 and (region is null or region < 0 and cluster is null or enemies is null)"
         " and start >= ? order by start desc limit ?",
         (HISTORY_FROM, limit),
     ).fetchall()
     for r in todo:
         d = get_json(f"https://api.opendota.com/api/matches/{r['id']}")
-        if d and d.get("players"):
+        p = next((p for p in d["players"] if p.get("account_id") == ACCOUNT), None) if d and d.get("players") else None
+        if p:
             # -1 — OpenDota ответил, но региона нет; иначе такой матч перезапрашивался бы каждый запуск.
-            db.execute("update matches set region=?, cluster=? where id=?",
-                       (d["region"] if d.get("region") is not None else -1, d.get("cluster"), r["id"]))
+            db.execute("update matches set region=?, cluster=?, allies=?, enemies=? where id=?",
+                       (d["region"] if d.get("region") is not None else -1, d.get("cluster"), *lineup(d, p), r["id"]))
             db.commit()
         time.sleep(1.1)
     return len(todo)
@@ -296,7 +307,7 @@ def main(od_limit=OD_PER_RUN):
 
     n = fill_details(db, od_limit)
     print(f"opendota details tried: {n}")
-    print(f"opendota regions tried: {fill_regions(db, REGION_PER_RUN)}")
+    print(f"opendota refill tried: {refill(db, REFILL_PER_RUN)}")
 
     OUT.write_text(json.dumps(build_output(db, const), ensure_ascii=False, separators=(",", ":")))
     db.close()
@@ -309,7 +320,7 @@ def build_output(db, const):
 
     all_rows = [dict(r) for r in db.execute("select * from matches where start >= ? order by start desc", (HISTORY_FROM,))]
     for m in all_rows:
-        for f in ("items", "backpack", "purchased", "score"):
+        for f in ("items", "backpack", "purchased", "score", "allies", "enemies"):
             m[f] = json.loads(m[f]) if m[f] else None
         hero = heroes.get(str(m["hero_id"]), {})
         m["hero"] = hero.get("name") or m["hero_name"]
@@ -349,7 +360,7 @@ def build_output(db, const):
         "shame": shame,
         "form": {"n": len(ranked := [m for m in all_rows if m["type"] == "Ranked"][:FORM]),
                  "w": sum(m["win"] for m in ranked)},
-        "stats": period_stats(all_rows, items, days, const.get("regions", {})),
+        "stats": period_stats(all_rows, items, days, const.get("regions", {}), heroes),
     }
 
 
@@ -446,7 +457,21 @@ def region_stats(rows, regions):
     return out
 
 
-def period_stats(rows, items, days, regions):
+def matchup_stats(rows, heroes, side):
+    """Винрейт против героев (side="enemies") или вместе с ними (side="allies")."""
+    by = {}
+    for m in rows:
+        for hid in m[side] or []:
+            hero = heroes.get(str(hid))
+            if not hero:
+                continue
+            h = by.setdefault(hid, {"hero": hero["name"], "img": hero["img"], "n": 0, "w": 0})
+            h["n"] += 1
+            h["w"] += m["win"]
+    return sorted(by.values(), key=lambda h: -h["n"])
+
+
+def period_stats(rows, items, days, regions, hero_const):
     """Статистика по всем ранкед-матчам базы с HISTORY_FROM."""
     rows = [m for m in rows if m["type"] == "Ranked"]
     days = days["points"]
@@ -505,6 +530,9 @@ def period_stats(rows, items, days, regions):
         "weeks": week_stats(detailed),
         "streaks": streak_stats(rows),
         "regions": region_stats(rows, regions),
+        "lineups": sum(m["enemies"] is not None for m in rows),
+        "vs": matchup_stats(rows, hero_const, "enemies"),
+        "with": matchup_stats(rows, hero_const, "allies"),
     }
 
 
