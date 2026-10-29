@@ -35,6 +35,7 @@ SHAME = 10  # сколько позорных матчей показывать;
 SHAME_MIN_D = 10
 FORM = 50  # по скольким последним ранкед-играм считать винрейт для прогноза до 7к
 OD_PER_RUN = 40  # сколько матчей без деталей догружать из OpenDota за один запуск
+REGION_PER_RUN = 150  # сколько старых матчей перезапрашивать ради региона за один запуск, пока не догрузим все
 CDN = "https://cdn.cloudflare.steamstatic.com"
 UA = {"User-Agent": "borov-tracker/1.0 (+github actions)"}
 # С ключом jina ходит через свои резидентные IP, и Cloudflare Dotabuff пускает свежие запросы.
@@ -63,6 +64,7 @@ create table if not exists matches (
   neutral integer,
   purchased text,                 -- json: ключи всех купленных предметов (purchase_log), если матч распаршен
   score text,                     -- json [свои, чужие]
+  region integer,                 -- регион сервера по OpenDota (constants/region)
   od_done integer default 0,
   od_tries integer default 0,
   source text
@@ -98,6 +100,9 @@ def connect():
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA)
+    # Колонку region добавили позже — в старой базе её нет.
+    if "region" not in {r["name"] for r in db.execute("pragma table_info(matches)")}:
+        db.execute("alter table matches add column region integer")
     return db
 
 
@@ -180,14 +185,16 @@ def upsert_basic(db, r, source):
 
 def load_constants(db):
     const = kv_get(db, "const")
-    if const and const.get("ts", 0) > time.time() - 7 * 86400:
+    if const and "regions" in const and const.get("ts", 0) > time.time() - 7 * 86400:
         return const
     heroes = get_json("https://api.opendota.com/api/constants/heroes")
     items = get_json("https://api.opendota.com/api/constants/items")
-    if not (heroes and items):
-        return const or {"heroes": {}, "items": {}}
+    regions = get_json("https://api.opendota.com/api/constants/region")
+    if not (heroes and items and regions):
+        return const or {"heroes": {}, "items": {}, "regions": {}}
     const = {
         "ts": int(time.time()),
+        "regions": {k: region_name(v) for k, v in regions.items()},
         "heroes": {str(h["id"]): {"name": h["localized_name"], "img": CDN + h["img"].split("?")[0]} for h in heroes.values()},
         "items": {str(v["id"]): {"key": k, "name": v.get("dname") or k, "img": CDN + v["img"].split("?")[0]}
                   for k, v in items.items() if v.get("id") is not None and v.get("img")},
@@ -208,7 +215,7 @@ def apply_opendota(db, mid, d):
     purchased = sorted({x["key"] for x in (p.get("purchase_log") or [])}) or None
     db.execute(
         """update matches set hero_id=?, side=?, win=?, duration=?, level=?, net_worth=?, gpm=?, xpm=?, lh=?, dn=?,
-             hero_damage=?, items=?, backpack=?, neutral=?, purchased=?, score=?, od_done=1,
+             hero_damage=?, items=?, backpack=?, neutral=?, purchased=?, score=?, region=?, od_done=1,
              k=?, d=?, a=?, type=coalesce(type, ?)
            where id=?""",
         (p.get("hero_id"), "radiant" if radiant else "dire", int(d["radiant_win"] == radiant), d.get("duration"),
@@ -219,6 +226,7 @@ def apply_opendota(db, mid, d):
          p.get("item_neutral") or 0,
          json.dumps(purchased) if purchased else None,
          json.dumps(score if radiant else score[::-1]),
+         d.get("region"),
          p.get("kills"), p.get("deaths"), p.get("assists"),
          "Ranked" if d.get("lobby_type") == 7 else None,
          mid),
@@ -235,6 +243,22 @@ def fill_details(db, limit):
         db.execute("update matches set od_tries=od_tries+1 where id=?", (r["id"],))
         apply_opendota(db, r["id"], d)
         db.commit()
+        time.sleep(1.1)
+    return len(todo)
+
+
+def fill_regions(db, limit):
+    """Регион не сохраняли для матчей, загруженных до его появления, — перезапрашиваем их понемногу."""
+    todo = db.execute(
+        "select id from matches where od_done=1 and region is null and start >= ? order by start desc limit ?",
+        (HISTORY_FROM, limit),
+    ).fetchall()
+    for r in todo:
+        d = get_json(f"https://api.opendota.com/api/matches/{r['id']}")
+        if d and d.get("players"):
+            # -1 — OpenDota ответил, но региона нет; иначе такой матч перезапрашивался бы каждый запуск.
+            db.execute("update matches set region=? where id=?", (d["region"] if d.get("region") is not None else -1, r["id"]))
+            db.commit()
         time.sleep(1.1)
     return len(todo)
 
@@ -267,6 +291,7 @@ def main(od_limit=OD_PER_RUN):
 
     n = fill_details(db, od_limit)
     print(f"opendota details tried: {n}")
+    print(f"opendota regions tried: {fill_regions(db, REGION_PER_RUN)}")
 
     OUT.write_text(json.dumps(build_output(db, const), ensure_ascii=False, separators=(",", ":")))
     db.close()
@@ -319,7 +344,7 @@ def build_output(db, const):
         "shame": shame,
         "form": {"n": len(ranked := [m for m in all_rows if m["type"] == "Ranked"][:FORM]),
                  "w": sum(m["win"] for m in ranked)},
-        "stats": period_stats(all_rows, items, days),
+        "stats": period_stats(all_rows, items, days, const.get("regions", {})),
     }
 
 
@@ -374,7 +399,18 @@ def rating_series(rows, cal):
     return {"start": start_mmr, "points": points}, current
 
 
-def period_stats(rows, items, days):
+def region_stats(rows, regions):
+    """Винрейт ранкеда по регионам сервера; матчи без известного региона не считаем."""
+    by = {}
+    for m in rows:
+        if m["region"] is not None and m["region"] >= 0:
+            r = by.setdefault(m["region"], {"region": regions.get(str(m["region"]), f"#{m['region']}"), "n": 0, "w": 0})
+            r["n"] += 1
+            r["w"] += m["win"]
+    return sorted(by.values(), key=lambda r: -r["n"])
+
+
+def period_stats(rows, items, days, regions):
     """Статистика по всем ранкед-матчам базы с HISTORY_FROM."""
     rows = [m for m in rows if m["type"] == "Ranked"]
     days = days["points"]
@@ -432,6 +468,7 @@ def period_stats(rows, items, days):
         "farm": farm_stats(detailed),
         "weeks": week_stats(detailed),
         "streaks": streak_stats(rows),
+        "regions": region_stats(rows, regions),
     }
 
 
@@ -501,6 +538,12 @@ def item_ref(items, iid):
         return None
     it = items.get(str(iid))
     return {"id": iid, "name": it["name"], "img": it["img"]} if it else None
+
+
+def region_name(raw):
+    """«US WEST» → «US West», «SOUTHAFRICA» → «South Africa»."""
+    name = raw.title().replace("Southafrica", "South Africa")
+    return re.sub(r"\b(Us|Pw)\b", lambda m: m.group(1).upper(), name)
 
 
 def slug(name):

@@ -120,6 +120,9 @@ a { color: inherit; }
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .legend i.ln { width: 18px; height: 0; border-top: 2px solid var(--gold); border-radius: 0; vertical-align: middle; }
+.legend i.ln.dash { border-top: 2px dashed var(--muted); }
+#regionChart svg { width: 100%; height: auto; display: block; overflow: visible; }
+svg .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 
 /* farm tiles */
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -316,6 +319,8 @@ const I18N = {
     cols: ["Герой", "Результат", "Длительность", "KDA", "NW · GPM", "Предметы", "Рейтинг", "Матч"],
     lvl: "ур.", score: "счёт", waitOd: "ждём OpenDota", onDb: id => `Матч ${id} на Dotabuff`,
     shame: "Позорный зал", shameSub: (n, d) => `топ-${n} с ${d} · от 10 смертей, по смертям минус убийства`,
+    regions: "Винрейт по регионам", regionsSub: (n, d) => `ранкед с ${d} · ${n} с известным регионом`,
+    regionsWait: "регионы матчей догружаются из OpenDota, появятся в течение пары часов",
     scope: "Выборка", allHeroes: "Все герои", withRad: "с Радиком", noRad: "без Радика", radBought: "куплен Radiance",
   },
   es: {
@@ -349,6 +354,8 @@ const I18N = {
     cols: ["Héroe", "Resultado", "Duración", "KDA", "NW · GPM", "Objetos", "MMR", "Partida"],
     lvl: "nv.", score: "marcador", waitOd: "esperando OpenDota", onDb: id => `Partida ${id} en Dotabuff`,
     shame: "Muro de la vergüenza", shameSub: (n, d) => `top ${n} desde ${d} · 10+ muertes, por muertes menos kills`,
+    regions: "Winrate por región", regionsSub: (n, d) => `clasificatorias desde ${d} · ${n} con región conocida`,
+    regionsWait: "las regiones se están cargando desde OpenDota, aparecerán en un par de horas",
     scope: "Muestra", allHeroes: "Todos", withRad: "con Radiance", noRad: "sin Radiance", radBought: "compró Radiance",
   },
 };
@@ -557,7 +564,7 @@ function render(d) {
       </div>
     </div>
 
-    <div class="card c12">
+    <div class="card c8">
       <div class="ch"><h2>${S.items}</h2><span class="sub">${S.itemsSub(st.detailed)}</span></div>
       <div class="ilist cols">
         ${st.items.map(it => {
@@ -574,12 +581,19 @@ function render(d) {
       </div>
       <div class="legend"><span><i style="background:var(--gold)"></i>${S.legWith}</span><span><i style="background:var(--dim)"></i>${S.legWithout}</span><span>${S.legDiff}</span></div>
     </div>
+
+    <div class="card c4 wide-m">
+      <div class="ch"><h2>${S.regions}</h2><span class="sub">${st.regions?.length ? S.regionsSub(games(st.regions.reduce((a, r) => a + r.n, 0)), dShort(st.since)) : ""}</span></div>
+      ${st.regions?.length ? `<div id="regionChart"></div>
+      <div class="legend"><span><i style="background:var(--win)"></i>≥ 50%</span><span><i style="background:var(--loss)"></i>&lt; 50%</span><span><i class="ln dash"></i>50%</span></div>` : `<p class="sub">${S.regionsWait}</p>`}
+    </div>
   </div>
   <p class="foot" id="foot"></p>`;
 
   renderRadiance(st);
   drawDays(d);
   drawMatches(d);
+  drawRegions(st.regions || []);
   let rt;
   onresize = () => { clearTimeout(rt); rt = setTimeout(() => { drawDays(d); bindTips($("#dayChart")); }, 150); };
   bindTips($("#app"));
@@ -771,6 +785,32 @@ function applyLang(next) {
 }
 document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => applyLang(b.dataset.lang)));
 applyLang(lang);
+
+function drawRegions(rs) {
+  const el = $("#regionChart");
+  if (!el) return;
+  // Столбец — винрейт региона; пунктир на 50% показывает, где регион «в плюс».
+  const W = 440, H = 270, L = 38, R = 8, T = 26, B = 46;
+  const n = rs.length, cw = (W - L - R) / n, bw = Math.min(46, cw * .62);
+  const y = v => T + (100 - v) / 100 * (H - T - B);
+  let g = "";
+  for (let v = 0; v <= 100; v += 25) g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`;
+  const bars = rs.map((r, i) => {
+    const wr = Math.round(r.w / r.n * 100), cx = L + cw * (i + .5);
+    const top = y(wr), h = Math.max(2, y(0) - top), rr = Math.min(4, h / 2);
+    // скругляем только верх столбца, низ стоит на нуле
+    const path = `M${cx - bw / 2},${y(0)}V${top + rr}Q${cx - bw / 2},${top} ${cx - bw / 2 + rr},${top}H${cx + bw / 2 - rr}Q${cx + bw / 2},${top} ${cx + bw / 2},${top + rr}V${y(0)}Z`;
+    const t = `<b>${esc(r.region)}</b><br><span class="w">${r.w}W</span>–<span class="l">${r.n - r.w}L</span> · ${wr}%<br>${games(r.n)}`;
+    return `<path d="${path}" fill="${wr >= 50 ? "#5cbf75" : "#d65c58"}" opacity=".85"/>
+      <text class="lbl-v" x="${cx}" y="${top - 7}" text-anchor="middle">${wr}%</text>
+      <text x="${cx}" y="${H - B + 18}" text-anchor="middle">${esc(r.region.length > 11 ? r.region.slice(0, 10) + "…" : r.region)}</text>
+      <text x="${cx}" y="${H - B + 34}" text-anchor="middle" style="font-size:11px">${r.n}</text>
+      <rect class="hit" x="${cx - cw / 2}" y="${T}" width="${cw}" height="${H - T}" data-tip="${esc(t)}"/>`;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${S.regions}">
+    ${g}<line class="ref" x1="${L}" x2="${W - R}" y1="${y(50)}" y2="${y(50)}"/>${bars}
+  </svg>`;
+}
 
 load();
 setInterval(load, 5 * 60000);
