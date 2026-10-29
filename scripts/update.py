@@ -64,7 +64,8 @@ create table if not exists matches (
   neutral integer,
   purchased text,                 -- json: ключи всех купленных предметов (purchase_log), если матч распаршен
   score text,                     -- json [свои, чужие]
-  region integer,                 -- регион сервера по OpenDota (constants/region)
+  region integer,                 -- регион сервера по OpenDota (constants/region), -1 — OpenDota не знает
+  cluster integer,                -- кластер сервера; по нему подписываем матчи с неизвестным регионом
   od_done integer default 0,
   od_tries integer default 0,
   source text
@@ -100,9 +101,11 @@ def connect():
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA)
-    # Колонку region добавили позже — в старой базе её нет.
-    if "region" not in {r["name"] for r in db.execute("pragma table_info(matches)")}:
-        db.execute("alter table matches add column region integer")
+    # Колонки region и cluster добавили позже — в старой базе их нет.
+    cols = {r["name"] for r in db.execute("pragma table_info(matches)")}
+    for col in ("region", "cluster"):
+        if col not in cols:
+            db.execute(f"alter table matches add column {col} integer")
     return db
 
 
@@ -215,7 +218,7 @@ def apply_opendota(db, mid, d):
     purchased = sorted({x["key"] for x in (p.get("purchase_log") or [])}) or None
     db.execute(
         """update matches set hero_id=?, side=?, win=?, duration=?, level=?, net_worth=?, gpm=?, xpm=?, lh=?, dn=?,
-             hero_damage=?, items=?, backpack=?, neutral=?, purchased=?, score=?, region=?, od_done=1,
+             hero_damage=?, items=?, backpack=?, neutral=?, purchased=?, score=?, region=?, cluster=?, od_done=1,
              k=?, d=?, a=?, type=coalesce(type, ?)
            where id=?""",
         (p.get("hero_id"), "radiant" if radiant else "dire", int(d["radiant_win"] == radiant), d.get("duration"),
@@ -226,7 +229,7 @@ def apply_opendota(db, mid, d):
          p.get("item_neutral") or 0,
          json.dumps(purchased) if purchased else None,
          json.dumps(score if radiant else score[::-1]),
-         d.get("region"),
+         d["region"] if d.get("region") is not None else -1, d.get("cluster"),
          p.get("kills"), p.get("deaths"), p.get("assists"),
          "Ranked" if d.get("lobby_type") == 7 else None,
          mid),
@@ -250,14 +253,16 @@ def fill_details(db, limit):
 def fill_regions(db, limit):
     """Регион не сохраняли для матчей, загруженных до его появления, — перезапрашиваем их понемногу."""
     todo = db.execute(
-        "select id from matches where od_done=1 and region is null and start >= ? order by start desc limit ?",
+        "select id from matches where od_done=1 and (region is null or region < 0 and cluster is null)"
+        " and start >= ? order by start desc limit ?",
         (HISTORY_FROM, limit),
     ).fetchall()
     for r in todo:
         d = get_json(f"https://api.opendota.com/api/matches/{r['id']}")
         if d and d.get("players"):
             # -1 — OpenDota ответил, но региона нет; иначе такой матч перезапрашивался бы каждый запуск.
-            db.execute("update matches set region=? where id=?", (d["region"] if d.get("region") is not None else -1, r["id"]))
+            db.execute("update matches set region=?, cluster=? where id=?",
+                       (d["region"] if d.get("region") is not None else -1, d.get("cluster"), r["id"]))
             db.commit()
         time.sleep(1.1)
     return len(todo)
@@ -400,14 +405,22 @@ def rating_series(rows, cal):
 
 
 def region_stats(rows, regions):
-    """Винрейт ранкеда по регионам сервера; матчи без известного региона не считаем."""
+    """Винрейт ранкеда по регионам сервера."""
     by = {}
     for m in rows:
-        if m["region"] is not None and m["region"] >= 0:
-            r = by.setdefault(m["region"], {"region": regions.get(str(m["region"]), f"#{m['region']}"), "n": 0, "w": 0})
-            r["n"] += 1
-            r["w"] += m["win"]
-    return sorted(by.values(), key=lambda r: -r["n"])
+        if m["region"] is None:
+            continue
+        # Новые кластеры Valve OpenDota не знает — складываем их в один столбец «другие» (region None).
+        name = regions.get(str(m["region"])) if m["region"] >= 0 else None
+        r = by.setdefault(name, {"region": name, "n": 0, "w": 0, "clusters": set()})
+        r["n"] += 1
+        r["w"] += m["win"]
+        if name is None and m["cluster"] is not None:
+            r["clusters"].add(m["cluster"])
+    out = sorted(by.values(), key=lambda r: (r["region"] is None, -r["n"]))
+    for r in out:
+        r["clusters"] = sorted(r["clusters"])
+    return out
 
 
 def period_stats(rows, items, days, regions):
