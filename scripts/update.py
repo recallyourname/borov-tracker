@@ -476,6 +476,14 @@ def matchup_stats(rows, heroes, side):
     return sorted(by.values(), key=lambda h: -h["n"])
 
 
+def draft_data(rows, heroes):
+    """Все герои и составы ранкед-матчей для калькулятора винрейта: [свой герой, победа, союзники, противники]."""
+    return {
+        "heroes": {hid: [h["name"], h["img"]] for hid, h in heroes.items()},
+        "games": [[m["hero_id"], m["win"], m["allies"], m["enemies"]] for m in rows if m["enemies"] is not None],
+    }
+
+
 def period_stats(rows, items, days, regions, hero_const):
     """Статистика по всем ранкед-матчам базы с HISTORY_FROM."""
     rows = [m for m in rows if m["type"] == "Ranked"]
@@ -538,6 +546,7 @@ def period_stats(rows, items, days, regions, hero_const):
         "lineups": sum(m["enemies"] is not None for m in rows),
         "vs": matchup_stats(rows, hero_const, "enemies"),
         "with": matchup_stats(rows, hero_const, "allies"),
+        "draft": draft_data(rows, hero_const),
     }
 
 

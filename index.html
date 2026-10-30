@@ -316,6 +316,34 @@ a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .lang { margin-left: 4px; }
 .lang button { padding: 2px 10px; font-size: 13px; }
 
+/* калькулятор винрейта: слева слоты и сетка героев, справа шансы и поправки */
+.calc { display: grid; gap: 20px; }
+@media (min-width: 1100px) { .calc { grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); column-gap: 36px; } }
+.cpick { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.cgrps { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.cgrp { display: grid; gap: 6px; }
+.cgrp .glbl { justify-self: start; font: 600 14px var(--f-head); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+.cgrp.on .glbl { color: var(--gold); }
+.cs { display: flex; gap: 6px; }
+.slotb { width: clamp(46px, 12vw, 64px); aspect-ratio: 16 / 9; border-radius: 6px; border: 1px dashed var(--line); background: var(--panel-2); color: var(--dim); padding: 0; cursor: pointer; overflow: hidden; font: 700 18px var(--f-head); }
+.slotb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cgrp.on .slotb { border-color: #e3ae4580; }
+.slotb.f { border: 2px solid var(--gold); }
+.cgrp[data-g="allies"] .slotb.f { border-color: var(--win); }
+.cgrp[data-g="enemies"] .slotb.f { border-color: var(--loss); }
+.slotb:focus-visible, .cgrid button:focus-visible, .glbl:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.cq { width: 100%; max-width: 340px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: 14px var(--f-body); padding: 8px 12px; }
+.cq:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); grid-auto-rows: max-content; gap: 6px; max-height: 268px; overflow-y: auto; padding-right: 4px; }
+.cgrid button { padding: 0; border: 0; border-radius: 4px; background: var(--panel-2); cursor: pointer; aspect-ratio: 16 / 9; overflow: hidden; }
+.cgrid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cgrid button:hover:not(:disabled) { outline: 2px solid var(--gold); outline-offset: -2px; }
+.cgrid button:disabled { opacity: .18; cursor: default; }
+.cres { display: grid; gap: 12px; align-content: start; }
+.cbig { font: 800 clamp(64px, 6vw, 96px) / .85 var(--f-head); }
+.cbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--loss); }
+.cbar span { background: var(--win); transition: width .3s; }
+.cres .note { font-size: 12px; color: var(--dim); }
 /* hall of fame: превью вместо 11 плееров сразу, плеер Twitch грузится по клику */
 .fame { grid-column: span 12; }
 .fame[hidden] { display: none; }
@@ -465,6 +493,12 @@ const I18N = {
     vsWait: n => `составы догружаются из OpenDota (${n} готово), обновится в течение часа`,
     regionsWait: "регионы матчей догружаются из OpenDota, появятся в течение пары часов",
     scope: "Выборка", allHeroes: "Все герои", withRad: "с Радиком", noRad: "без Радика", radBought: "куплен Radiance",
+    calc: "Калькулятор винрейта", calcSub: n => `ранкед · ${n} ${ruPlural(n, "игра", "игры", "игр")} с составами`,
+    calcSides: { pick: "Пик", allies: "За", enemies: "Против" }, calcFind: "Найти героя", calcReset: "Сбросить",
+    calcAdd: g => `Добавить героя: ${g}`, calcRm: h => `Убрать ${h}`, calcAny: "любой герой",
+    calcBase: (h, p, g) => `база — ${h}: ${p}% за ${g}`, calcEmpty: "Накидайте союзников и врагов — посчитаю шансы",
+    calcExact: (n, w) => n ? `ровно такой расклад был ${n} ${ruPlural(n, "раз", "раза", "раз")}: ${w}-${n - w}` : "ровно такой расклад ещё не попадался",
+    calcNote: "Винрейт пика плюс поправка за каждого героя; чем меньше игр с героем, тем поправка ближе к нулю",
   },
   es: {
     slotName: "Casino Borovo", slotCnt: (s, j) => `tiradas ${s} · botes ${j}`, slotPull: "Tirar de la palanca",
@@ -510,6 +544,12 @@ const I18N = {
     vsWait: n => `las alineaciones se están cargando desde OpenDota (${n} listas), se actualizará en una hora`,
     regionsWait: "las regiones se están cargando desde OpenDota, aparecerán en un par de horas",
     scope: "Muestra", allHeroes: "Todos", withRad: "con Radiance", noRad: "sin Radiance", radBought: "compró Radiance",
+    calc: "Calculadora de winrate", calcSub: n => `clasificatorias · ${n} partidas con alineaciones`,
+    calcSides: { pick: "Pick", allies: "Aliados", enemies: "Rivales" }, calcFind: "Buscar héroe", calcReset: "Reiniciar",
+    calcAdd: g => `Añadir héroe: ${g}`, calcRm: h => `Quitar ${h}`, calcAny: "cualquier héroe",
+    calcBase: (h, p, g) => `base — ${h}: ${p}% en ${g}`, calcEmpty: "Añade aliados y rivales y calculo las probabilidades",
+    calcExact: (n, w) => n ? `esta alineación exacta salió ${n} ${n === 1 ? "vez" : "veces"}: ${w}-${n - w}` : "esta alineación exacta aún no ha salido",
+    calcNote: "Winrate del pick más un ajuste por cada héroe; con pocas partidas el ajuste se acerca a cero",
   },
 };
 // Язык: ?lang=es в ссылке, потом выбор из прошлого визита, по умолчанию русский.
@@ -540,6 +580,10 @@ const RAD_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_r
 
 let DATA = null;
 let radScope = "spectre", vsScope = "vs";
+// состояние калькулятора живёт вне render, чтобы автообновление данных не сбрасывало набранный драфт
+let calc = { pick: null, allies: [], enemies: [], side: "allies", q: "" };
+const CALC_K = 20;  // сколько «виртуальных» игр тянут винрейт героя к базе
+const CALC_MAX = { pick: 1, allies: 4, enemies: 5 };
 const VS_MIN = 15;  // меньше игр против героя — винрейт слишком шумный
 
 async function load() {
@@ -671,6 +715,30 @@ function render(d) {
 
     <div id="fameSlot"></div>
 
+    <div class="card c12">
+      <div class="ch"><h2>${S.matches}</h2><span class="sub">${S.lastLc(ms.length)}</span></div>
+      <div class="hist-wrap">
+        <table class="h">
+          <thead><tr>${S.cols.map((c, i) => `<th${[4, 6, 7].includes(i) ? ' class="c"' : ""}>${c}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${ms.map(m => `
+            <tr class="${m.win ? "win" : "loss"}">
+              <td><div class="hero"><img src="${esc(m.hero_img)}" alt="" loading="lazy"><div><b>${esc(m.hero)}</b><span>${m.side === "radiant" ? "Radiant" : m.side === "dire" ? "Dire" : ""}${m.level ? ` · ${S.lvl} ${m.level}` : ""}</span></div></div></td>
+              <td><span class="res ${m.win ? "w" : "l"}">${m.win ? S.win : S.loss}</span><a class="sub" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" title="${when(m.start)}">${ago(m.start)}</a></td>
+              <td>${dur(m.duration)}<div class="sub">${esc(m.type || "")}${m.score ? ` · ${S.score} ${m.score[0]}:${m.score[1]}` : ""}</div></td>
+              <td class="kda"><b>${m.k}</b> / <b class="l">${m.d}</b> / <b>${m.a}</b><div class="sub">KDA ${((m.k + m.a) / Math.max(1, m.d)).toFixed(1)}${m.lh != null ? ` · ${m.lh}/${m.dn}` : ""}</div></td>
+              <td class="c">${m.nw != null ? `<b class="kda">${(m.nw / 1000).toFixed(1)}k</b><div class="sub">${m.gpm} GPM</div>` : `<span class="sub">${S.waitOd}</span>`}</td>
+              <td><div class="inv">${m.items.length ? m.items.map(i => i ? `<img src="${esc(i.img)}" alt="${esc(i.name)}" title="${esc(i.name)}" loading="lazy">` : `<span class="empty"></span>`).join("") + (m.neutral ? `<img class="nt" src="${esc(m.neutral.img)}" alt="${esc(m.neutral.name)}" title="${esc(m.neutral.name)}" loading="lazy">` : "") : `<span class="sub">—</span>`}</div></td>
+              <td class="c"><span class="mm">${fmt(m.mmr_after)}</span><span class="dl ${m.delta > 0 ? "w" : m.delta < 0 ? "l" : "m"}">${m.delta ? sign(m.delta) : "0"}</span></td>
+              <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="${S.onDb(m.id)}">Dotabuff ↗</a></td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card acc-blue c12" id="calcCard"></div>
+
     <div class="card c8 chart fill">
       <div class="ch"><h2>${S.daily}</h2><span class="sub">${S.dailySub(d.step, dShort(d.history_from))}</span></div>
       <div class="sc"><div id="dayChart"></div></div>
@@ -705,28 +773,6 @@ function render(d) {
 
     <div class="card c12" id="vsCard"></div>
 
-    <div class="card c12">
-      <div class="ch"><h2>${S.matches}</h2><span class="sub">${S.lastLc(ms.length)}</span></div>
-      <div class="hist-wrap">
-        <table class="h">
-          <thead><tr>${S.cols.map((c, i) => `<th${[4, 6, 7].includes(i) ? ' class="c"' : ""}>${c}</th>`).join("")}</tr></thead>
-          <tbody>
-            ${ms.map(m => `
-            <tr class="${m.win ? "win" : "loss"}">
-              <td><div class="hero"><img src="${esc(m.hero_img)}" alt="" loading="lazy"><div><b>${esc(m.hero)}</b><span>${m.side === "radiant" ? "Radiant" : m.side === "dire" ? "Dire" : ""}${m.level ? ` · ${S.lvl} ${m.level}` : ""}</span></div></div></td>
-              <td><span class="res ${m.win ? "w" : "l"}">${m.win ? S.win : S.loss}</span><a class="sub" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" title="${when(m.start)}">${ago(m.start)}</a></td>
-              <td>${dur(m.duration)}<div class="sub">${esc(m.type || "")}${m.score ? ` · ${S.score} ${m.score[0]}:${m.score[1]}` : ""}</div></td>
-              <td class="kda"><b>${m.k}</b> / <b class="l">${m.d}</b> / <b>${m.a}</b><div class="sub">KDA ${((m.k + m.a) / Math.max(1, m.d)).toFixed(1)}${m.lh != null ? ` · ${m.lh}/${m.dn}` : ""}</div></td>
-              <td class="c">${m.nw != null ? `<b class="kda">${(m.nw / 1000).toFixed(1)}k</b><div class="sub">${m.gpm} GPM</div>` : `<span class="sub">${S.waitOd}</span>`}</td>
-              <td><div class="inv">${m.items.length ? m.items.map(i => i ? `<img src="${esc(i.img)}" alt="${esc(i.name)}" title="${esc(i.name)}" loading="lazy">` : `<span class="empty"></span>`).join("") + (m.neutral ? `<img class="nt" src="${esc(m.neutral.img)}" alt="${esc(m.neutral.name)}" title="${esc(m.neutral.name)}" loading="lazy">` : "") : `<span class="sub">—</span>`}</div></td>
-              <td class="c"><span class="mm">${fmt(m.mmr_after)}</span><span class="dl ${m.delta > 0 ? "w" : m.delta < 0 ? "l" : "m"}">${m.delta ? sign(m.delta) : "0"}</span></td>
-              <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${m.id}" target="_blank" rel="noopener" aria-label="${S.onDb(m.id)}">Dotabuff ↗</a></td>
-            </tr>`).join("")}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="card c8">
       <div class="ch"><h2>${S.items}</h2><span class="sub">${S.itemsSub(st.detailed)}</span></div>
       <div class="ilist cols">
@@ -756,6 +802,7 @@ function render(d) {
   renderRadiance(st);
   $("#fameSlot").replaceWith(fame);
   renderVs(st);
+  renderCalc(st);
   drawDays(d);
   drawMatches(d);
   drawRegions(st.regions || []);
@@ -863,6 +910,115 @@ function renderVs(st) {
       <div><div class="lbl">${S.best}</div>${best.map(row).join("")}</div>
     </div>` : `<p class="sub">${S.vsWait(done)}</p>`}`;
   el.querySelectorAll("[data-v]").forEach(btn => btn.addEventListener("click", () => { vsScope = btn.dataset.v; renderVs(st); }));
+}
+
+// Оценка шансов: логиты складываются. База — винрейт пика (сжатый к общему), за каждого героя добавляется
+// его поправка в играх на этом пике; её априорное значение — поправка того же героя по всем играм.
+function draftOdds(dr) {
+  const logit = p => Math.log(p / (1 - p)), sig = x => 1 / (1 + Math.exp(-x));
+  const all = dr.games, p0 = (all.reduce((a, g) => a + g[1], 0) + 1) / (all.length + 2);
+  const mine = calc.pick == null ? all : all.filter(g => g[0] === calc.pick);
+  const pb = (mine.reduce((a, g) => a + g[1], 0) + CALC_K * p0) / (mine.length + CALC_K);
+  const tally = (gs, h, i) => gs.reduce((o, g) => g[i]?.includes(h) ? { n: o.n + 1, w: o.w + g[1] } : o, { n: 0, w: 0 });
+  const factors = [];
+  for (const [side, i] of [["allies", 2], ["enemies", 3]]) {
+    for (const h of calc[side]) {
+      const glob = tally(all, h, i);
+      const prior = sig(logit(pb) + logit((glob.w + CALC_K * p0) / (glob.n + CALC_K)) - logit(p0));
+      const own = tally(mine, h, i);
+      const d = logit((own.w + CALC_K * prior) / (own.n + CALC_K)) - logit(pb);
+      factors.push({ h, side, d, pp: sig(logit(pb) + d) - pb, n: own.n, w: own.w });
+    }
+  }
+  const has = (g, i, hs) => hs.every(h => g[i]?.includes(h));
+  const exact = factors.length ? mine.filter(g => has(g, 2, calc.allies) && has(g, 3, calc.enemies)) : [];
+  return {
+    p: sig(logit(pb) + factors.reduce((a, f) => a + f.d, 0)), pb, n: mine.length, w: mine.reduce((a, g) => a + g[1], 0),
+    factors: factors.sort((a, b) => Math.abs(b.d) - Math.abs(a.d)), exact: { n: exact.length, w: exact.reduce((a, g) => a + g[1], 0) },
+  };
+}
+
+function renderCalc(st) {
+  const el = $("#calcCard"), dr = st.draft;
+  const head = `<div class="ch"><h2>${S.calc}</h2><span class="sub">${dr?.games?.length ? S.calcSub(dr.games.length) : ""}</span></div>`;
+  if (!dr?.games?.length || (st.lineups || 0) < st.games * .9) { el.innerHTML = `${head}<p class="sub">${S.vsWait(st.lineups || 0)}</p>`; return; }
+  // по умолчанию пик — самый частый герой, то есть Спектра
+  if (calc.pick === null) {
+    const cnt = {};
+    for (const g of dr.games) cnt[g[0]] = (cnt[g[0]] || 0) + 1;
+    calc.pick = +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+  }
+  el.innerHTML = `
+    <div class="ch"><h2>${S.calc}</h2><span class="sub">${S.calcSub(dr.games.length)}</span>
+      <div class="seg"><button type="button" data-reset>${S.calcReset}</button></div></div>
+    <div class="calc">
+      <div class="cpick">
+        <div class="cgrps" id="cSlots"></div>
+        <input class="cq" id="cQ" type="search" placeholder="${S.calcFind}" aria-label="${S.calcFind}" value="${esc(calc.q)}" autocomplete="off">
+        <div class="cgrid" id="cGrid"></div>
+      </div>
+      <div class="cres" id="cRes"></div>
+    </div>`;
+  $("#cQ").addEventListener("input", e => { calc.q = e.target.value; drawCalc(dr, true); });
+  el.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.reset != null) calc = { pick: calc.pick, allies: [], enemies: [], side: "allies", q: "" };
+    else if (b.dataset.rm) {
+      const [g, i] = b.dataset.rm.split(":");
+      // undefined, а не null: null значит «ещё не выбран, поставь самого частого»
+      if (g === "pick") calc.pick = undefined; else calc[g].splice(+i, 1);
+      calc.side = g;
+    } else if (b.dataset.side) calc.side = b.dataset.side;
+    else if (b.dataset.h) {
+      const h = +b.dataset.h;
+      if (calc.side === "pick") calc.pick = h;
+      else if (calc[calc.side].length < CALC_MAX[calc.side]) calc[calc.side].push(h);
+      // заполнили группу — переключаемся на следующую незаполненную
+      const free = ["pick", "allies", "enemies"].find(g => g === "pick" ? calc.pick == null : calc[g].length < CALC_MAX[g]);
+      if (calc.side === "pick" || calc[calc.side].length >= CALC_MAX[calc.side]) calc.side = free || calc.side;
+    } else return;
+    if (b.dataset.reset != null) $("#cQ").value = "";
+    drawCalc(dr);
+  });
+  drawCalc(dr);
+}
+
+function drawCalc(dr, gridOnly) {
+  const H = id => dr.heroes[id] || ["#" + id, ""];
+  const used = new Set([calc.pick, ...calc.allies, ...calc.enemies]);
+  const q = calc.q.trim().toLowerCase();
+  $("#cGrid").innerHTML = Object.entries(dr.heroes)
+    .filter(([, [name]]) => !q || name.toLowerCase().includes(q))
+    .sort((a, b) => a[1][0].localeCompare(b[1][0]))
+    .map(([id, [name, img]]) => `<button type="button" data-h="${id}" title="${esc(name)}" aria-label="${esc(name)}"${used.has(+id) ? " disabled" : ""}><img src="${esc(img)}" alt="" loading="lazy"></button>`).join("");
+  if (gridOnly) return;
+
+  $("#cSlots").innerHTML = ["pick", "allies", "enemies"].map(g => {
+    const hs = g === "pick" ? (calc.pick == null ? [] : [calc.pick]) : calc[g];
+    const slots = Array.from({ length: CALC_MAX[g] }, (_, i) => hs[i] != null
+      ? `<button type="button" class="slotb f" data-rm="${g}:${i}" title="${esc(S.calcRm(H(hs[i])[0]))}" aria-label="${esc(S.calcRm(H(hs[i])[0]))}"><img src="${esc(H(hs[i])[1])}" alt=""></button>`
+      : `<button type="button" class="slotb" data-side="${g}" aria-label="${esc(S.calcAdd(S.calcSides[g]))}">+</button>`).join("");
+    return `<div class="cgrp${calc.side === g ? " on" : ""}" data-g="${g}"><button type="button" class="glbl" data-side="${g}" aria-pressed="${calc.side === g}">${S.calcSides[g]}</button><div class="cs">${slots}</div></div>`;
+  }).join("");
+
+  const r = draftOdds(dr), p = Math.round(r.p * 100);
+  const pickName = calc.pick == null ? S.calcAny : H(calc.pick)[0];
+  $("#cRes").innerHTML = `
+    <div class="cbig ${p >= 50 ? "w" : "l"}">${p}%</div>
+    <div class="cbar" role="img" aria-label="${p}%"><span style="width:${r.p * 100}%"></span></div>
+    <div class="sub">${S.calcBase(esc(pickName), Math.round(r.pb * 100), games(r.n))} · ${r.w}-${r.n - r.w}</div>
+    ${r.factors.length ? `<div>${r.factors.map(f => {
+      const pp = Math.round(f.pp * 100);
+      return `<div class="hrow">
+        <img src="${esc(H(f.h)[1])}" alt="" loading="lazy">
+        <div><div class="nm">${esc(H(f.h)[0])}</div><div class="sub"><span class="${f.side === "allies" ? "w" : "l"}">${S.calcSides[f.side]}</span></div></div>
+        <div class="wlc">${games(f.n)}<br>${f.w}-${f.n - f.w}</div>
+        <div class="pct ${pp > 0 ? "w" : pp < 0 ? "l" : "muted"}">${sign(pp)}</div>
+      </div>`;
+    }).join("")}</div>
+    <div class="sub">${S.calcExact(r.exact.n, r.exact.w)}</div>` : `<p class="sub">${S.calcEmpty}</p>`}
+    <p class="sub note">${S.calcNote}</p>`;
 }
 
 const tip = $("#tip");
