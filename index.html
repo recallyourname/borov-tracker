@@ -7,7 +7,7 @@
 <meta name="description" content="Примерный MMR, последние 20 матчей и статистика игрока 226241953, обновление каждые 15 минут">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Caveat:wght@500;600&display=swap">
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">
     (function(m,e,t,r,i,k,a){
@@ -35,8 +35,7 @@
   --loss: #d65c58;
   --borov: #4fb8cf;
   --f-head: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
-  --f-body: "Inter", "Segoe UI", system-ui, sans-serif;
-  --gap: 16px;
+\g<0>  --gap: 16px;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -176,60 +175,73 @@ svg .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .hrow .wlc { font-size: 13px; color: var(--muted); text-align: right; }
 .pct { font: 700 20px var(--f-head); text-align: right; }
 
-/* casino */
+/* casino: заколочено досками, на досках записка */
 .top .wrap { position: relative; }
-.slot { margin-left: auto; display: flex; align-items: center; gap: 8px; padding: 8px 6px 8px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); transition: border-color .2s, box-shadow .2s; }
+.slot { position: relative; margin-left: auto; width: 262px; height: 104px; flex: none; }
 .slot + .live { margin-left: 0; }
 .live { max-width: 250px; text-align: right; }
 @media (max-width: 820px) { .live { max-width: none; text-align: left; } }
-.slot-body { display: grid; gap: 5px; }
-.slot-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.slot-under { position: absolute; inset: 0; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); padding: 8px 12px; display: grid; gap: 5px; align-content: start; filter: grayscale(1) brightness(.45); }
 .slot-name { font: 700 12px var(--f-head); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
-.slot-cnt { font-size: 11px; color: var(--muted); }
 .reels { display: flex; gap: 5px; }
-.reel { width: 56px; height: 41px; border-radius: 6px; overflow: hidden; background: var(--bg); border: 2px solid var(--line); transition: border-color .2s, box-shadow .2s; }
-.reel img { width: 56px; height: 41px; display: block; object-fit: cover; transition: filter .12s; }
-.reel.spin img { filter: blur(1.5px) brightness(1.2) saturate(1.6); }
-.reel.spin.up img { transform: translateY(-4px); }
-.reel.spin.dn img { transform: translateY(4px); }
-.reel.stop { animation: reelPop .35s cubic-bezier(.3, 1.8, .5, 1); }
-.slot-res { font: 600 14px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); height: 18px; white-space: nowrap; }
-.slot-res.close { color: var(--text); }
-.slot-res.bad { color: var(--loss); }
-.slot.spinning { animation: slotSpin .5s linear infinite; }
-.slot.spinning .reel { animation: reelFlash .35s steps(2) infinite; }
-.slot.jack { border-color: var(--gold); animation: jackGlow .6s ease-in-out infinite alternate; }
-.slot.jack .reel { border-color: var(--gold); animation: reelGold .3s steps(2) 8; }
-.slot.jack .slot-res { font-weight: 800; font-size: 16px; background: linear-gradient(90deg, #e3ae45, #fff3c4, #ff8a3d, #e3ae45); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1s linear infinite; }
-.slot.near { animation: nearPulse .4s ease-in-out 3; }
-.slot.bust { animation: bust .5s ease-in-out; border-color: var(--loss); box-shadow: 0 0 24px #d65c5888; }
-.lever { position: relative; width: 38px; height: 88px; padding: 0; border: 0; background: transparent; cursor: pointer; flex: none; }
-.lever:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
-.lever .track { position: absolute; left: 13px; top: 12px; width: 12px; height: 70px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); box-sizing: border-box; }
-.lever .arm { position: absolute; inset: 0 0 auto 0; height: 52px; transition: transform .14s ease-out; }
-.lever.pulled .arm { transform: translateY(34px); }
-.lever:hover .knob { animation: knobWiggle .5s ease-in-out infinite; }
-.lever .stick { position: absolute; left: 16px; top: 16px; width: 6px; height: 36px; border-radius: 3px; background: var(--muted); }
-.lever .knob { position: absolute; left: 8px; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--loss); box-shadow: inset -4px -5px 0 #a8403c, inset 3px 3px 0 #f08a86, 0 0 10px #d65c5866; }
-.boom { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 50; animation: boom 1.6s cubic-bezier(.2, .7, .3, 1) forwards; }
-.boom.img { width: 34px; height: 25px; border-radius: 4px; background-size: cover; box-shadow: 0 0 10px #e3ae45; }
-.boom.spark { width: 8px; height: 8px; border-radius: 2px; }
-.flash { position: fixed; inset: 0; pointer-events: none; z-index: 49; background: radial-gradient(circle at var(--x) var(--y), #ffd76a66, transparent 60%); animation: flash .8s ease-out forwards; }
-.flash.red { background: radial-gradient(circle at var(--x) var(--y), #d65c5855, transparent 55%); }
-@keyframes slotSpin { 0% { border-color: #e3ae45; box-shadow: 0 0 14px #e3ae4566; } 33% { border-color: #d65c58; box-shadow: 0 0 14px #d65c5866; } 66% { border-color: #4fb8cf; box-shadow: 0 0 14px #4fb8cf66; } 100% { border-color: #e3ae45; box-shadow: 0 0 14px #e3ae4566; } }
-@keyframes reelFlash { 50% { border-color: #e3ae45; } }
-@keyframes reelPop { 0% { transform: scale(1.25); border-color: #fff3c4; } 100% { transform: scale(1); } }
-@keyframes reelGold { 50% { box-shadow: 0 0 18px #ffd76a; border-color: #fff3c4; } }
-@keyframes jackGlow { from { box-shadow: 0 0 0 3px #e3ae4533, 0 0 18px #e3ae4566; } to { box-shadow: 0 0 0 5px #e3ae4566, 0 0 44px #ffb84dcc; } }
-@keyframes shimmer { to { background-position: -300% 0; } }
-@keyframes nearPulse { 50% { box-shadow: 0 0 22px #e3ae4599; border-color: #e3ae45; } }
-@keyframes bust { 0%, 100% { transform: none; } 15%, 55% { transform: translateX(-6px) rotate(-1deg); } 35%, 75% { transform: translateX(6px) rotate(1deg); } }
-@keyframes knobWiggle { 50% { transform: translateY(2px) scale(1.08); } }
-@keyframes boom { 0% { transform: translate(var(--x0), var(--y0)) scale(.4) rotate(0); opacity: 1; } 100% { transform: translate(var(--x1), var(--y1)) scale(1) rotate(var(--r)); opacity: 0; } }
-@keyframes flash { to { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) {
-  .slot, .reel, .reel img, .lever .arm, .knob, .slot-res { animation: none !important; transition: none !important; }
+.reel { width: 56px; height: 41px; border-radius: 6px; overflow: hidden; background: var(--bg); border: 2px solid var(--line); }
+.reel img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.slot-under .stick { position: absolute; right: 22px; top: 28px; width: 6px; height: 50px; border-radius: 3px; background: var(--muted); }
+.slot-under .knob { position: absolute; right: 14px; top: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--loss); }
+.plank { position: absolute; left: -14px; right: -14px; height: 28px; border-radius: 3px; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.14), transparent 30%, transparent 70%, rgba(0,0,0,.28)),
+    repeating-linear-gradient(90deg, transparent 0 37px, rgba(60,30,10,.35) 37px 38px, transparent 38px 91px, rgba(60,30,10,.25) 91px 92px),
+    repeating-linear-gradient(0deg, #9a6a3c 0 3px, #b98552 3px 4px, #9a6a3c 4px 7px, #6e4826 7px 8px);
+  box-shadow: 0 4px 0 rgba(0,0,0,.35), 0 8px 14px rgba(0,0,0,.55), inset 0 0 0 1px rgba(40,20,5,.5); }
+.plank::before, .plank::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e9ecef, #8e959c 45%, #3a3f44 75%); box-shadow: 0 1px 1px rgba(0,0,0,.7), 1px 2px 0 rgba(40,20,5,.6); }
+.plank::before { left: 10px; }
+.plank::after { right: 10px; }
+.plank.p1 { top: 10px; transform: rotate(-7deg); }
+.plank.p2 { top: 62px; transform: rotate(5deg); }
+.plank.p3 { top: 36px; left: 30px; right: 30px; height: 24px; transform: rotate(-1deg); filter: brightness(.9) hue-rotate(-6deg); }
+.cnote { position: absolute; left: 50%; top: 50%; width: 92px; height: 74px; margin: -40px 0 0 -46px; padding: 12px 8px 6px; border: 0; cursor: pointer;
+  background: linear-gradient(180deg, transparent 0 19px, #a9c4e4 19px 20px, transparent 20px 33px, #a9c4e4 33px 34px, transparent 34px 47px, #a9c4e4 47px 48px, transparent 48px 61px, #a9c4e4 61px 62px, transparent 62px), #fbf8ee;
+  color: #1d3f8f; font: 600 15px/1 var(--f-hand); text-align: center; transform: rotate(4deg); transform-origin: 50% 6px;
+  box-shadow: 0 6px 12px rgba(0,0,0,.55), 0 1px 0 rgba(0,0,0,.2);
+  clip-path: polygon(0 2%, 8% 0, 22% 3%, 40% 0, 58% 2%, 76% 0, 92% 3%, 100% 1%, 99% 97%, 85% 100%, 64% 97%, 44% 100%, 26% 98%, 10% 100%, 1% 98%);
+  transition: transform .2s cubic-bezier(.3, 1.6, .5, 1); }
+.cnote::before { content: ""; position: absolute; left: 50%; top: 3px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f1f3f5, #8e959c 50%, #33383d 80%); box-shadow: 0 1px 1px rgba(0,0,0,.6); }
+.cnote span { display: block; transform: rotate(-3deg); }
+.cnote small { display: block; margin-top: 4px; font-size: 12px; color: #b0413e; }
+.cnote:hover { transform: rotate(1deg) scale(1.08); }
+.cnote:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.veil { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: rgba(5,7,10,.72); backdrop-filter: blur(3px); }
+.veil[hidden] { display: none; }
+.sheet { position: relative; width: min(560px, 100%); min-height: 420px; padding: 58px 32px 40px 84px; color: #1d3f8f; border-radius: 2px; transform: rotate(-1.2deg);
+  background: linear-gradient(90deg, transparent 0 66px, #e08a8a 66px 67px, transparent 67px 69px, #e08a8a 69px 70px, transparent 70px), repeating-linear-gradient(180deg, transparent 0 31px, #a9c4e4 31px 32px) 0 26px, #fbf8ee;
+  box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 2px 0 #e7e1cf, 0 4px 0 #d9d2bd; }
+.sheet::before { content: ""; position: absolute; left: 22px; top: 40px; bottom: 40px; width: 16px; background: radial-gradient(circle, var(--bg) 0 6px, transparent 7px) 0 0 / 16px 64px repeat-y; }
+.sheet .date { position: absolute; right: 32px; top: 22px; font: 500 22px var(--f-hand); opacity: .8; }
+.sheet p { margin: 0; font: 500 27px/32px var(--f-hand); letter-spacing: .01em; text-wrap: pretty; }
+.sheet p + p { margin-top: 32px; }
+.sheet .sign { text-align: right; padding-right: 8px; }
+.sheet u { text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.sheet .x { position: absolute; right: 10px; bottom: 8px; border: 0; background: transparent; color: #b0413e; font: 600 22px var(--f-hand); cursor: pointer; padding: 4px 8px; }
+.sheet .x:focus-visible { outline: 2px solid #1d3f8f; border-radius: 4px; }
+@media (max-width: 520px) {
+  .sheet { padding: 52px 18px 40px 58px; background: linear-gradient(90deg, transparent 0 44px, #e08a8a 44px 45px, transparent 45px), repeating-linear-gradient(180deg, transparent 0 31px, #a9c4e4 31px 32px) 0 20px, #fbf8ee; }
+  .sheet::before { left: 12px; }
+  .sheet p { font-size: 23px; }
 }
+@media (prefers-reduced-motion: no-preference) {
+  .cnote { animation: sway 3.4s ease-in-out infinite; }
+  .cnote:hover { animation: none; }
+  .veil:not([hidden]) .sheet { animation: drop .45s cubic-bezier(.2, 1.4, .4, 1); }
+  .veil:not([hidden]) .sheet p { animation: write 1.4s steps(28) both; }
+  .veil:not([hidden]) .sheet p:nth-of-type(2) { animation-delay: 1.3s; }
+  .veil:not([hidden]) .sheet p:nth-of-type(3) { animation-delay: 1.9s; animation-duration: .5s; }
+}
+@keyframes sway { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes drop { from { transform: translateY(-40px) rotate(-6deg); opacity: 0; } }
+@keyframes write { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
 /* vs */
 .vscols { display: grid; gap: 18px; }
@@ -416,17 +428,15 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       </div>
     </div>
     <div class="slot" id="slot">
-      <div class="slot-body">
-        <div class="slot-hd"><span class="slot-name" id="slotName">Борово-казино</span><span class="slot-cnt" id="slotCnt"></span></div>
-        <div class="reels" id="reels">
-          <span class="reel"><img alt=""></span><span class="reel"><img alt=""></span><span class="reel"><img alt=""></span>
+      <div class="slot-under" aria-hidden="true">
+        <span class="slot-name" id="slotName">Борово-казино</span>
+        <div class="reels">
+          <span class="reel"><img alt="" src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/radiance.png"></span><span class="reel"><img alt="" src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/spectre.png"></span><span class="reel"><img alt="" src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/manta.png"></span>
         </div>
-        <div class="slot-res" id="slotRes"></div>
+        <span class="stick"></span><span class="knob"></span>
       </div>
-      <button class="lever" id="lever" type="button" aria-label="Дёрнуть ручку">
-        <span class="track"></span>
-        <span class="arm"><span class="stick"></span><span class="knob"></span></span>
-      </button>
+      <span class="plank p1"></span><span class="plank p3"></span><span class="plank p2"></span>
+      <button class="cnote" id="note" type="button" aria-haspopup="dialog"><span id="noteHd">Казино<br>закрыто</span><small id="noteRead">читать</small></button>
     </div>
     <div class="live" id="live">
       <span class="dot" id="schedule">До планового обновления</span>
@@ -436,6 +446,16 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
     </div>
   </div>
 </header>
+
+<div class="veil" id="veil" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="noteP1">
+    <span class="date">30.10.26</span>
+    <p id="noteP1"></p>
+    <p id="noteP2"></p>
+    <p class="sign" id="noteSign"></p>
+    <button class="x" id="noteClose" type="button"></button>
+  </div>
+</div>
 
 <main class="wrap" id="app">
   <div class="err">Загружаю данные…</div>
@@ -450,9 +470,9 @@ const $ = (s, el = document) => el.querySelector(s);
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const I18N = {
   ru: {
-    slotName: "Борово-казино", slotCnt: (s, j) => `спинов ${s} · джекпотов ${j}`, slotPull: "Дёрнуть ручку",
-    slot: { idle: "Дёрни ручку →", spin: "Крутим…", miss: "Мимо. Как его ММР", close: "Два Радика… третий ушёл в рапиру",
-      triple: "Три одинаковых, но не Радик", down: "Три минуса · −75 ММР", spectre: "Спектра, Спектра, Спектра", jackpot: "Джекпот · три Радика" },
+    slotName: "Борово-казино", noteHd: "Казино<br>закрыто", noteRead: "читать", noteClose: "закрыть ✕", noteSign: "Администрация",
+    noteP1: "К сожалению, <u>Тупа Чумбра</u> потребовала удалить своё казино, так как проходит по делу о мошенничестве в нескольких юрисдикциях,",
+    noteP2: "как и его брат Бурим Андрей.",
     twLive: up => `в эфире ${up}`, twOff: "офлайн", hr: "ч", min: "м",
     fame: "Зал славы", fameSub: n => `${n} ${ruPlural(n, "клип", "клипа", "клипов")} с Twitch`, clipBy: a => `клип · ${a}`, clipPlay: t => `Смотреть клип «${t}»`, clipPrev: "Предыдущие клипы", clipNext: "Следующие клипы",
     locale: "ru-RU", name: "ТУПА БОРАВ", mmr: "ММР", loading: "Загружаю данные…",
@@ -501,9 +521,9 @@ const I18N = {
     calcNote: "Винрейт пика плюс поправка за каждого героя; чем меньше игр с героем, тем поправка ближе к нулю",
   },
   es: {
-    slotName: "Casino Borovo", slotCnt: (s, j) => `tiradas ${s} · botes ${j}`, slotPull: "Tirar de la palanca",
-    slot: { idle: "Tira de la palanca →", spin: "Girando…", miss: "Fallo. Como su MMR", close: "Dos Radiance… el tercero se fue en Rapier",
-      triple: "Tres iguales, pero no Radiance", down: "Tres menos · −75 MMR", spectre: "Spectre, Spectre, Spectre", jackpot: "Bote · tres Radiance" },
+    slotName: "Casino Borovo", noteHd: "Casino<br>cerrado", noteRead: "leer", noteClose: "cerrar ✕", noteSign: "La administración",
+    noteP1: "Por desgracia, <u>Tupa Chumbra</u> exigió eliminar su casino, ya que está siendo investigada por fraude en varias jurisdicciones,",
+    noteP2: "igual que su hermano Burim Andréi.",
     twLive: up => `en directo ${up}`, twOff: "desconectado", hr: "h", min: "min",
     fame: "Salón de la fama", fameSub: n => `${n} clips de Twitch`, clipBy: a => `clip · ${a}`, clipPlay: t => `Ver el clip «${t}»`, clipPrev: "Clips anteriores", clipNext: "Clips siguientes",
     locale: "es-ES", name: "PUTA MADRE BASURO", mmr: "MMR", loading: "Cargando datos…",
@@ -1136,131 +1156,24 @@ function applyLang(next) {
   document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
   if (DATA) render(DATA); else $("#app .err").textContent = S.loading;
   showTwitch();
-  showSlot();
+  showNote();
   renderClips();
 }
 
-// Казино в шапке. Радик на барабане вдвое чаще остальных: джекпот примерно 1 к 125.
-const ITEM = k => `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/${k}.png`;
-const DOWN = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 48"><rect width="66" height="48" fill="#2a1415"/><path d="M19 13h28L33 37z" fill="#d65c58"/></svg>');
-const SYMBOLS = [
-  { id: "radiance", img: ITEM("radiance"), w: 2 },
-  { id: "spectre", img: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/spectre.png", w: 1 },
-  { id: "down", img: DOWN, w: 1 },
-  { id: "manta", img: ITEM("manta"), w: 1 },
-  { id: "bfury", img: ITEM("bfury"), w: 1 },
-  { id: "butterfly", img: ITEM("butterfly"), w: 1 },
-  { id: "urn", img: ITEM("urn_of_shadows"), w: 1 },
-  { id: "bkb", img: ITEM("black_king_bar"), w: 1 },
-  { id: "wand", img: ITEM("magic_wand"), w: 1 },
-];
-SYMBOLS.forEach(x => { new Image().src = x.img; });
-const SLOT_TOTAL = SYMBOLS.reduce((a, x) => a + x.w, 0);
-function rollSymbol() {
-  let r = Math.random() * SLOT_TOTAL;
-  return SYMBOLS.findIndex(x => (r -= x.w) < 0);
-}
-const slot = { reels: [7, 0, 4], spinning: false, result: "idle", spins: 0, jackpots: 0 };
-try { Object.assign(slot, JSON.parse(localStorage.getItem("slot") || "{}"), { spinning: false, result: "idle" }); } catch {}
-function showSlot() {
+// Казино закрыто: доски на гвоздях и записка, по клику открывается тетрадный лист.
+function showNote() {
   $("#slotName").textContent = S.slotName;
-  $("#slotCnt").textContent = S.slotCnt(slot.spins, slot.jackpots);
-  $("#lever").setAttribute("aria-label", S.slotPull);
-  const res = $("#slotRes");
-  res.textContent = S.slot[slot.result];
-  res.className = "slot-res" + (slot.result === "close" ? " close" : slot.result === "down" ? " bad" : "");
-  const box = $("#slot");
-  box.classList.toggle("spinning", slot.result === "spin");
-  box.classList.toggle("jack", slot.result === "jackpot");
+  for (const k of ["noteHd", "noteRead", "noteP1", "noteP2", "noteSign", "noteClose"]) $("#" + k).innerHTML = S[k];
 }
-const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-// Одноразовая анимация: снимаем класс, перезапускаем reflow, ставим снова.
-function replay(el, cls) {
-  el.classList.remove(cls);
-  void el.offsetWidth;
-  el.classList.add(cls);
+const veil = $("#veil");
+function closeNote() {
+  veil.hidden = true;
+  $("#note").focus();
 }
-function flash(red) {
-  if (calm()) return;
-  const r = $("#slot").getBoundingClientRect(), f = document.createElement("div");
-  f.className = "flash" + (red ? " red" : "");
-  f.style.setProperty("--x", r.left + r.width / 2 + "px");
-  f.style.setProperty("--y", r.top + r.height / 2 + "px");
-  document.body.append(f);
-  setTimeout(() => f.remove(), 900);
-}
-// Салют из Радиков и золотых искр из центра автомата.
-function fireworks() {
-  if (calm()) return;
-  flash(false);
-  const r = $("#slot").getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  const colors = ["#e3ae45", "#fff3c4", "#ff8a3d", "#ffd76a", "#d65c58", "#5cbf75", "#4fb8cf"];
-  for (let i = 0; i < 70; i++) {
-    const el = document.createElement("span"), a = Math.random() * Math.PI * 2, d = 120 + Math.random() * 380;
-    const img = i < 14;
-    el.className = "boom " + (img ? "img" : "spark");
-    if (img) el.style.backgroundImage = `url(${SYMBOLS[0].img})`;
-    else el.style.background = colors[i % colors.length];
-    el.style.setProperty("--x0", cx + "px");
-    el.style.setProperty("--y0", cy + "px");
-    el.style.setProperty("--x1", cx + Math.cos(a) * d + "px");
-    el.style.setProperty("--y1", cy + Math.sin(a) * d * .7 + 140 * Math.random() + "px");
-    el.style.setProperty("--r", (Math.random() * 720 - 360) + "deg");
-    el.style.animationDelay = Math.random() * .25 + "s";
-    document.body.append(el);
-    setTimeout(() => el.remove(), 2000);
-  }
-}
-function setReel(i, v) {
-  slot.reels[i] = v;
-  const img = $("#reels").children[i].firstElementChild;
-  img.src = SYMBOLS[v].img;
-}
-function pullLever() {
-  if (slot.spinning) return;
-  slot.spinning = true;
-  slot.result = "spin";
-  showSlot();
-  const lever = $("#lever"), reels = [...$("#reels").children];
-  lever.classList.add("pulled");
-  setTimeout(() => lever.classList.remove("pulled"), 260);
-  const final = [rollSymbol(), rollSymbol(), rollSymbol()];
-  const moving = [true, true, true];
-  let tick = 0;
-  reels.forEach(r => r.classList.add("spin"));
-  const iv = setInterval(() => {
-    tick++;
-    reels.forEach((r, i) => {
-      if (!moving[i]) return;
-      setReel(i, Math.floor(Math.random() * SYMBOLS.length));
-      r.classList.toggle("up", (tick + i) % 2 === 0);
-      r.classList.toggle("dn", (tick + i) % 2 === 1);
-    });
-  }, 70);
-  [700, 1100, 1500].forEach((t, i) => setTimeout(() => {
-    moving[i] = false;
-    reels[i].classList.remove("spin", "up", "dn");
-    setReel(i, final[i]);
-    replay(reels[i], "stop");
-    if (i < 2) return;
-    clearInterval(iv);
-    const ids = final.map(v => SYMBOLS[v].id), same = ids.every(x => x === ids[0]);
-    const rad = ids.filter(x => x === "radiance").length;
-    slot.result = rad === 3 ? "jackpot" : rad === 2 ? "close" : same && ids[0] === "down" ? "down"
-      : same && ids[0] === "spectre" ? "spectre" : same ? "triple" : "miss";
-    slot.spins++;
-    if (rad === 3) slot.jackpots++;
-    slot.spinning = false;
-    try { localStorage.setItem("slot", JSON.stringify({ spins: slot.spins, jackpots: slot.jackpots, reels: slot.reels })); } catch {}
-    showSlot();
-    const box = $("#slot");
-    if (slot.result === "jackpot") fireworks();
-    else if (slot.result === "close" || slot.result === "triple" || slot.result === "spectre") { replay(box, "near"); flash(false); }
-    else if (slot.result === "down") { replay(box, "bust"); flash(true); }
-  }, t));
-}
-slot.reels.forEach((v, i) => setReel(i, SYMBOLS[v] ? v : 0));
-$("#lever").addEventListener("click", pullLever);
+$("#note").addEventListener("click", () => { veil.hidden = false; $("#noteClose").focus(); });
+$("#noteClose").addEventListener("click", closeNote);
+veil.addEventListener("click", e => { if (e.target === veil) closeNote(); });
+addEventListener("keydown", e => { if (e.key === "Escape" && !veil.hidden) closeNote(); });
 
 // Зал славы: список ведётся в clips.json, названия и превью дотягивает scripts/clips.py.
 let CLIPS = [];
