@@ -296,6 +296,7 @@ table.h td.c, table.h th.c { text-align: right; }
 .dl.w { background: #5cbf7522; }
 .dl.l { background: #d65c5822; }
 .dl.m { background: var(--panel-2); color: var(--muted); }
+.dl .tri { font-size: .7em; margin-right: 3px; vertical-align: .12em; }
 td a { color: var(--muted); text-decoration: none; }
 td a:hover { color: var(--text); text-decoration: underline; }
 a.db { text-decoration: none; display: inline-block; font: 600 13px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
@@ -318,10 +319,15 @@ a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 /* hall of fame: превью вместо 11 плееров сразу, плеер Twitch грузится по клику */
 .fame { grid-column: span 12; }
 .fame .ch { margin-bottom: 14px; }
-.clips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
-@media (max-width: 1100px) { .clips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .clips { grid-template-columns: 1fr; } }
-.clip { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.fame .ch .nav { display: flex; gap: 6px; margin-left: auto; }
+.fame .ch .nav button { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 700 18px var(--f-head); cursor: pointer; }
+.fame .ch .nav button:hover:not(:disabled) { border-color: var(--gold); }
+.fame .ch .nav button:disabled { opacity: .35; cursor: default; }
+.clips { --per: 3; display: flex; gap: var(--gap); overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; overscroll-behavior-x: contain; scrollbar-width: none; }
+.clips::-webkit-scrollbar { display: none; }
+@media (max-width: 1100px) { .clips { --per: 2; } }
+@media (max-width: 640px) { .clips { --per: 1.15; } }
+.clip { flex: 0 0 calc((100% - (var(--per) - 1) * var(--gap)) / var(--per)); scroll-snap-align: start; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
 .clip .pl { position: relative; aspect-ratio: 16 / 9; background: var(--panel-2); }
 .clip .pl iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .clip .pl button { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; cursor: pointer; background: radial-gradient(circle at 50% 45%, #9146ff33, transparent 60%), var(--panel-2); }
@@ -414,7 +420,7 @@ const I18N = {
     slot: { idle: "Дёрни ручку →", spin: "Крутим…", miss: "Мимо. Как его ММР", close: "Два Радика… третий ушёл в рапиру",
       triple: "Три одинаковых, но не Радик", down: "Три минуса · −75 ММР", spectre: "Спектра, Спектра, Спектра", jackpot: "Джекпот · три Радика" },
     twLive: up => `в эфире ${up}`, twOff: "офлайн", hr: "ч", min: "м",
-    fame: "Зал славы", fameSub: n => `${n} ${ruPlural(n, "клип", "клипа", "клипов")} с Twitch`, clipBy: a => `клип · ${a}`, clipPlay: t => `Смотреть клип «${t}»`,
+    fame: "Зал славы", fameSub: n => `${n} ${ruPlural(n, "клип", "клипа", "клипов")} с Twitch`, clipBy: a => `клип · ${a}`, clipPlay: t => `Смотреть клип «${t}»`, clipPrev: "Предыдущие клипы", clipNext: "Следующие клипы",
     locale: "ru-RU", name: "ТУПА БОРАВ", mmr: "ММР", loading: "Загружаю данные…",
     loadErr: e => `Не удалось загрузить data.json (${e}). Попробую ещё раз через минуту.`,
     justNow: "только что", minAgo: m => `${m} мин назад`, hAgo: (h, m) => `${h} ч ${m} мин назад`, dAgo: d => `${d} дн назад`,
@@ -459,7 +465,7 @@ const I18N = {
     slot: { idle: "Tira de la palanca →", spin: "Girando…", miss: "Fallo. Como su MMR", close: "Dos Radiance… el tercero se fue en Rapier",
       triple: "Tres iguales, pero no Radiance", down: "Tres menos · −75 MMR", spectre: "Spectre, Spectre, Spectre", jackpot: "Bote · tres Radiance" },
     twLive: up => `en directo ${up}`, twOff: "desconectado", hr: "h", min: "min",
-    fame: "Salón de la fama", fameSub: n => `${n} clips de Twitch`, clipBy: a => `clip · ${a}`, clipPlay: t => `Ver el clip «${t}»`,
+    fame: "Salón de la fama", fameSub: n => `${n} clips de Twitch`, clipBy: a => `clip · ${a}`, clipPlay: t => `Ver el clip «${t}»`, clipPrev: "Clips anteriores", clipNext: "Clips siguientes",
     locale: "es-ES", name: "PUTA MADRE BASURO", mmr: "MMR", loading: "Cargando datos…",
     loadErr: e => `No se pudo cargar data.json (${e}). Reintento en un minuto.`,
     justNow: "ahora mismo", minAgo: m => `hace ${m} min`, hAgo: (h, m) => `hace ${h} h ${m} min`, dAgo: d => `hace ${d} d`,
@@ -507,6 +513,8 @@ let S = I18N[lang];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = n => n == null ? "—" : n.toLocaleString(S.locale);
 const sign = n => (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n);
+// дельта средних: зелёный ▲ — выросло, красный ▼ — упало
+const trend = (n, txt) => `<span class="dl ${n > 0 ? "w" : n < 0 ? "l" : "m"}">${n ? `<span class="tri">${n > 0 ? "▲" : "▼"}</span>` : ""}${txt}</span>`;
 const dur = s => s == null ? "—" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const pct = o => o.n ? Math.round(o.w / o.n * 100) : null;
 const dShort = iso => new Date(iso + "T00:00:00").toLocaleDateString(S.locale, { day: "2-digit", month: "2-digit" });
@@ -746,7 +754,7 @@ function render(d) {
   drawMatches(d);
   drawRegions(st.regions || []);
   let rt;
-  onresize = () => { clearTimeout(rt); rt = setTimeout(() => { drawDays(d); bindTips($("#dayChart")); }, 150); };
+  onresize = () => { clearTimeout(rt); rt = setTimeout(() => { drawDays(d); bindTips($("#dayChart")); syncClipNav(); }, 150); };
   bindTips($("#app"));
   tickLive();
 }
@@ -758,7 +766,7 @@ function farmTiles(f) {
     const v = f.week[key], pv = f.prev[key], all = f.all[key];
     const view = x => x == null ? "—" : show ? show(x) : x.toFixed(digits);
     const dlt = v != null && pv != null ? v - pv : null;
-    const dTxt = dlt == null ? "" : `<span class="dl ${dlt > 0 ? "w" : dlt < 0 ? "l" : "m"}">${dlt > 0 ? "+" : dlt < 0 ? "−" : "±"}${show ? show(Math.abs(dlt)) : Math.abs(dlt).toFixed(digits)}</span>`;
+    const dTxt = dlt == null ? "" : trend(dlt, show ? show(Math.abs(dlt)) : Math.abs(dlt).toFixed(digits));
     return `<div class="tile"><span class="k">${name}</span><span class="v">${view(v)}${dTxt}</span><span class="s">${S.perPeriod} ${view(all)}</span></div>`;
   }).join("");
 }
@@ -793,7 +801,7 @@ function weeksTable(all) {
       const wr = Math.round(w.w / w.n * 100);
       return `<tr><td>${dShort(w.week)}</td><td>${w.n}</td><td class="${wr >= 50 ? "w" : "l"}">${wr}%</td>
         <td><span class="gbar" style="width:${Math.round((w.gpm || 0) / max * 46)}px"></span><b>${w.gpm != null ? Math.round(w.gpm) : "—"}</b></td>
-        <td>${dl == null ? "—" : `<span class="dl ${dl > 0 ? "w" : dl < 0 ? "l" : "m"}">${sign(dl)}</span>`}</td>
+        <td>${dl == null ? "—" : trend(dl, Math.abs(dl))}</td>
         <td>${w.xpm != null ? Math.round(w.xpm) : "—"}</td></tr>`;
     }).slice(0, shown).join("")}
   </tbody></table>`;
@@ -1105,7 +1113,8 @@ function renderClips() {
   const el = $("#fame");
   el.hidden = !CLIPS.length;
   if (!CLIPS.length) return;
-  el.innerHTML = `<div class="ch"><h2>${S.fame}</h2><span class="sub">${S.fameSub(CLIPS.length)}</span></div>
+  el.innerHTML = `<div class="ch"><h2>${S.fame}</h2><span class="sub">${S.fameSub(CLIPS.length)}</span>
+    <div class="nav"><button type="button" data-dir="-1" aria-label="${S.clipPrev}">‹</button><button type="button" data-dir="1" aria-label="${S.clipNext}">›</button></div></div>
   <div class="clips">${CLIPS.map(c => {
     const t = c.title || c.slug;
     return `<article class="clip">
@@ -1116,8 +1125,25 @@ function renderClips() {
       <div class="cap"><b>${esc(t)}</b><a href="https://clips.twitch.tv/${esc(c.slug)}" target="_blank" rel="noopener">${esc(S.clipBy(c.author || "Twitch"))} ↗</a></div>
     </article>`;
   }).join("")}</div>`;
+  const track = el.querySelector(".clips");
+  track.addEventListener("scroll", syncClipNav, { passive: true });
+  syncClipNav();
+}
+function syncClipNav() {
+  const el = $("#fame"), t = el.querySelector(".clips");
+  if (!t) return;
+  const [prev, next] = el.querySelectorAll(".nav button");
+  prev.disabled = t.scrollLeft <= 2;
+  next.disabled = t.scrollLeft + t.clientWidth >= t.scrollWidth - 2;
 }
 $("#fame").addEventListener("click", e => {
+  const nav = e.target.closest("button[data-dir]");
+  if (nav) {
+    // листаем на ширину видимой части, scroll-snap доводит до начала карточки
+    const t = $("#fame .clips");
+    t.scrollBy({ left: nav.dataset.dir * t.clientWidth });
+    return;
+  }
   const b = e.target.closest("button[data-clip]");
   if (!b) return;
   // Twitch пускает встраивание только с домена из parent
