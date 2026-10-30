@@ -669,6 +669,8 @@ function render(d) {
       </div>
     </div>
 
+    <div id="fameSlot"></div>
+
     <div class="card c8 chart fill">
       <div class="ch"><h2>${S.daily}</h2><span class="sub">${S.dailySub(d.step, dShort(d.history_from))}</span></div>
       <div class="sc"><div id="dayChart"></div></div>
@@ -692,8 +694,6 @@ function render(d) {
       <div class="ch"><span class="lbl">${S.byWeek}</span><span class="sub">${S.byWeekSub}</span></div>
       ${weeksTable(st.weeks)}
     </div>
-
-    <div id="fameSlot"></div>
 
     <div class="card c8 chart">
       <div class="ch"><h2>${S.lastN(ms.length)}</h2><span class="sub">${S.chartSub}</span></div>
