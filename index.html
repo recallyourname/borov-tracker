@@ -321,13 +321,19 @@ a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .fame .ch { margin-bottom: 14px; }
 .fame .ch .nav { display: flex; gap: 6px; margin-left: auto; }
 .fame .ch .nav button { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 700 18px var(--f-head); cursor: pointer; }
-.fame .ch .nav button:hover:not(:disabled) { border-color: var(--gold); }
-.fame .ch .nav button:disabled { opacity: .35; cursor: default; }
-.clips { --per: 3; display: flex; gap: var(--gap); overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; overscroll-behavior-x: contain; scrollbar-width: none; }
-.clips::-webkit-scrollbar { display: none; }
-@media (max-width: 1100px) { .clips { --per: 2; } }
-@media (max-width: 640px) { .clips { --per: 1.15; } }
-.clip { flex: 0 0 calc((100% - (var(--per) - 1) * var(--gap)) / var(--per)); scroll-snap-align: start; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.fame .ch .nav button:hover { border-color: var(--gold); }
+/* бесконечная лента: все карточки в одной ячейке грида, место задаёт --o (сдвиг от центра) */
+.clips { --w: 42%; display: grid; overflow: hidden; touch-action: pan-y; padding: 4px 0; }
+@media (max-width: 1100px) { .clips { --w: 56%; } }
+@media (max-width: 640px) { .clips { --w: 80%; } }
+.clip { grid-area: 1 / 1; justify-self: center; align-self: center; width: var(--w); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0;
+  transform: translateX(calc(var(--o, 0) * 94%)) scale(.76); opacity: .5; z-index: 1; cursor: pointer; transition: transform .35s ease, opacity .35s ease, border-color .35s; }
+.clip.on { transform: none; opacity: 1; z-index: 3; cursor: default; border-color: var(--gold); box-shadow: 0 10px 30px #0008; }
+.clip.near { z-index: 2; }
+.clip.near:hover { opacity: .75; }
+.clip.far { opacity: 0; visibility: hidden; pointer-events: none; }
+.clip.jump { transition: none; }
+.clip:not(.on) .pl, .clip:not(.on) .cap a { pointer-events: none; }
 .clip .pl { position: relative; aspect-ratio: 16 / 9; background: var(--panel-2); }
 .clip .pl iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .clip .pl button { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; cursor: pointer; background: radial-gradient(circle at 50% 45%, #9146ff33, transparent 60%), var(--panel-2); }
@@ -754,7 +760,7 @@ function render(d) {
   drawMatches(d);
   drawRegions(st.regions || []);
   let rt;
-  onresize = () => { clearTimeout(rt); rt = setTimeout(() => { drawDays(d); bindTips($("#dayChart")); syncClipNav(); }, 150); };
+  onresize = () => { clearTimeout(rt); rt = setTimeout(() => { drawDays(d); bindTips($("#dayChart")); }, 150); };
   bindTips($("#app"));
   tickLive();
 }
@@ -1125,25 +1131,52 @@ function renderClips() {
       <div class="cap"><b>${esc(t)}</b><a href="https://clips.twitch.tv/${esc(c.slug)}" target="_blank" rel="noopener">${esc(S.clipBy(c.author || "Twitch"))} ↗</a></div>
     </article>`;
   }).join("")}</div>`;
-  const track = el.querySelector(".clips");
-  track.addEventListener("scroll", syncClipNav, { passive: true });
-  syncClipNav();
+  clipAt = Math.min(clipAt, CLIPS.length - 1);
+  placeClips();
 }
-function syncClipNav() {
-  const el = $("#fame"), t = el.querySelector(".clips");
-  if (!t) return;
-  const [prev, next] = el.querySelectorAll(".nav button");
-  prev.disabled = t.scrollLeft <= 2;
-  next.disabled = t.scrollLeft + t.clientWidth >= t.scrollWidth - 2;
+// Карточка по центру — большая и сразу кликабельная, соседи по бокам; лента замкнута в кольцо.
+let clipAt = 0;
+function placeClips(focus) {
+  const cards = [...document.querySelectorAll("#fame .clip")], n = cards.length;
+  cards.forEach((c, k) => {
+    let o = ((k - clipAt) % n + n) % n;
+    if (o > n / 2) o -= n;
+    // через «шов» кольца карточка перелетает без анимации, иначе проедет через центр
+    c.classList.toggle("jump", c.style.getPropertyValue("--o") !== "" && Math.abs(o - c.style.getPropertyValue("--o")) > 1);
+    c.style.setProperty("--o", o);
+    c.classList.toggle("on", !o);
+    c.classList.toggle("near", Math.abs(o) === 1);
+    c.classList.toggle("far", Math.abs(o) > 1);
+    c.querySelectorAll("button, a").forEach(x => x.tabIndex = o ? -1 : 0);
+    // ушла из центра — глушим плеер и возвращаем превью
+    const f = c.querySelector("iframe");
+    if (o && f?._btn) f.replaceWith(f._btn);
+  });
+  if (focus) cards[clipAt]?.querySelector("button[data-clip]")?.focus({ preventScroll: true });
 }
+function stepClips(d, focus) {
+  if (!CLIPS.length) return;
+  clipAt = ((clipAt + d) % CLIPS.length + CLIPS.length) % CLIPS.length;
+  placeClips(focus);
+}
+$("#fame").addEventListener("keydown", e => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  e.preventDefault();
+  stepClips(e.key === "ArrowLeft" ? -1 : 1, true);
+});
+let swipeX = null;
+$("#fame").addEventListener("pointerdown", e => { if (e.pointerType !== "mouse") swipeX = e.clientX; });
+$("#fame").addEventListener("pointerup", e => {
+  if (swipeX == null) return;
+  const dx = e.clientX - swipeX;
+  swipeX = null;
+  if (Math.abs(dx) > 40) stepClips(dx < 0 ? 1 : -1);
+});
 $("#fame").addEventListener("click", e => {
   const nav = e.target.closest("button[data-dir]");
-  if (nav) {
-    // листаем на ширину видимой части, scroll-snap доводит до начала карточки
-    const t = $("#fame .clips");
-    t.scrollBy({ left: nav.dataset.dir * t.clientWidth });
-    return;
-  }
+  if (nav) return stepClips(+nav.dataset.dir);
+  const side = e.target.closest(".clip:not(.on)");
+  if (side) return stepClips(+side.style.getPropertyValue("--o"), true);
   const b = e.target.closest("button[data-clip]");
   if (!b) return;
   // Twitch пускает встраивание только с домена из parent
@@ -1152,6 +1185,7 @@ $("#fame").addEventListener("click", e => {
   f.allowFullscreen = true;
   f.allow = "autoplay; fullscreen";
   f.title = b.getAttribute("aria-label");
+  f._btn = b;
   b.replaceWith(f);
 });
 
