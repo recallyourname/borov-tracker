@@ -8,6 +8,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=113914617', 'ym');
+
+    ym(113914617, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<!-- /Yandex.Metrika counter -->
 <style>
 /* Layout: дашборд на весь экран — 12-колоночная сетка карточек; палитра и иконки предметов те же, что в сравнении Яторо и Борова */
 :root {
@@ -303,6 +315,26 @@ a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .lang { margin-left: 4px; }
 .lang button { padding: 2px 10px; font-size: 13px; }
 
+/* hall of fame: превью вместо 11 плееров сразу, плеер Twitch грузится по клику */
+.fame { padding-bottom: 28px; }
+.fame .ch { margin-bottom: 14px; }
+.clips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
+@media (max-width: 1100px) { .clips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .clips { grid-template-columns: 1fr; } }
+.clip { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.clip .pl { position: relative; aspect-ratio: 16 / 9; background: var(--panel-2); }
+.clip .pl iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.clip .pl button { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; cursor: pointer; background: radial-gradient(circle at 50% 45%, #9146ff33, transparent 60%), var(--panel-2); }
+.clip .pl button img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.clip .pl button::after { content: ""; position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: #0c0f13cc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6.5v11l9-5.5z' fill='%23eceef2'/%3E%3C/svg%3E") center / 30px no-repeat; border: 2px solid #eceef255; transition: transform .15s, border-color .15s; }
+.clip .pl button:hover::after { transform: scale(1.08); border-color: var(--gold); }
+.clip .pl button:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.clip .pl .len { position: absolute; right: 8px; bottom: 8px; font: 600 13px var(--f-head); background: #0c0f13cc; padding: 1px 7px; border-radius: 4px; pointer-events: none; }
+.clip .cap { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 14px 12px; }
+.clip .cap b { font: 700 19px var(--f-head); line-height: 1.15; overflow-wrap: anywhere; }
+.clip .cap a { font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+.clip .cap a:hover { color: var(--text); }
+
 .foot { font-size: 13px; color: var(--muted); padding: 4px 0 28px; }
 .foot b { color: var(--text); font-weight: 600; }
 .err { padding: 80px 0; text-align: center; color: var(--muted); }
@@ -323,6 +355,7 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 </style>
 </head>
 <body>
+<noscript><div><img src="https://mc.yandex.ru/watch/113914617" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 <header class="top">
   <div class="wrap">
     <img class="ava" id="ava" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
@@ -368,6 +401,8 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   <div class="err">Загружаю данные…</div>
 </main>
 
+<section class="wrap fame" id="fame" hidden></section>
+
 <div class="tip" id="tip"></div>
 
 <script>
@@ -379,6 +414,7 @@ const I18N = {
     slot: { idle: "Дёрни ручку →", spin: "Крутим…", miss: "Мимо. Как его ММР", close: "Два Радика… третий ушёл в рапиру",
       triple: "Три одинаковых, но не Радик", down: "Три минуса · −75 ММР", spectre: "Спектра, Спектра, Спектра", jackpot: "Джекпот · три Радика" },
     twLive: up => `в эфире ${up}`, twOff: "офлайн", hr: "ч", min: "м",
+    fame: "Зал славы", fameSub: n => `${n} ${ruPlural(n, "клип", "клипа", "клипов")} с Twitch`, clipBy: a => `клип · ${a}`, clipPlay: t => `Смотреть клип «${t}»`,
     locale: "ru-RU", name: "ТУПА БОРАВ", mmr: "ММР", loading: "Загружаю данные…",
     loadErr: e => `Не удалось загрузить data.json (${e}). Попробую ещё раз через минуту.`,
     justNow: "только что", minAgo: m => `${m} мин назад`, hAgo: (h, m) => `${h} ч ${m} мин назад`, dAgo: d => `${d} дн назад`,
@@ -423,6 +459,7 @@ const I18N = {
     slot: { idle: "Tira de la palanca →", spin: "Girando…", miss: "Fallo. Como su MMR", close: "Dos Radiance… el tercero se fue en Rapier",
       triple: "Tres iguales, pero no Radiance", down: "Tres menos · −75 MMR", spectre: "Spectre, Spectre, Spectre", jackpot: "Bote · tres Radiance" },
     twLive: up => `en directo ${up}`, twOff: "desconectado", hr: "h", min: "min",
+    fame: "Salón de la fama", fameSub: n => `${n} clips de Twitch`, clipBy: a => `clip · ${a}`, clipPlay: t => `Ver el clip «${t}»`,
     locale: "es-ES", name: "PUTA MADRE BASURO", mmr: "MMR", loading: "Cargando datos…",
     loadErr: e => `No se pudo cargar data.json (${e}). Reintento en un minuto.`,
     justNow: "ahora mismo", minAgo: m => `hace ${m} min`, hAgo: (h, m) => `hace ${h} h ${m} min`, dAgo: d => `hace ${d} d`,
@@ -924,6 +961,7 @@ function applyLang(next) {
   if (DATA) render(DATA); else $("#app .err").textContent = S.loading;
   showTwitch();
   showSlot();
+  renderClips();
 }
 
 // Казино в шапке. Радик на барабане вдвое чаще остальных: джекпот примерно 1 к 125.
@@ -1048,6 +1086,43 @@ function pullLever() {
 slot.reels.forEach((v, i) => setReel(i, SYMBOLS[v] ? v : 0));
 $("#lever").addEventListener("click", pullLever);
 
+// Зал славы: список ведётся в clips.json, названия и превью дотягивает scripts/clips.py.
+let CLIPS = [];
+async function loadClips() {
+  try {
+    const r = await fetch("clips.json", { cache: "no-store" });
+    if (r.ok) CLIPS = (await r.json()).filter(c => c.slug);
+  } catch {}
+  renderClips();
+}
+function renderClips() {
+  const el = $("#fame");
+  el.hidden = !CLIPS.length;
+  if (!CLIPS.length) return;
+  el.innerHTML = `<div class="ch"><h2>${S.fame}</h2><span class="sub">${S.fameSub(CLIPS.length)}</span></div>
+  <div class="clips">${CLIPS.map(c => {
+    const t = c.title || c.slug;
+    return `<article class="clip">
+      <div class="pl">
+        <button type="button" data-clip="${esc(c.slug)}" aria-label="${esc(S.clipPlay(t))}">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy">` : ""}</button>
+        ${c.duration ? `<span class="len">${Math.floor(c.duration / 60)}:${String(c.duration % 60).padStart(2, "0")}</span>` : ""}
+      </div>
+      <div class="cap"><b>${esc(t)}</b><a href="https://clips.twitch.tv/${esc(c.slug)}" target="_blank" rel="noopener">${esc(S.clipBy(c.author || "Twitch"))} ↗</a></div>
+    </article>`;
+  }).join("")}</div>`;
+}
+$("#fame").addEventListener("click", e => {
+  const b = e.target.closest("button[data-clip]");
+  if (!b) return;
+  // Twitch пускает встраивание только с домена из parent
+  const f = document.createElement("iframe");
+  f.src = `https://clips.twitch.tv/embed?clip=${encodeURIComponent(b.dataset.clip)}&parent=${location.hostname}&autoplay=true`;
+  f.allowFullscreen = true;
+  f.allow = "autoplay; fullscreen";
+  f.title = b.getAttribute("aria-label");
+  b.replaceWith(f);
+});
+
 // Статус стрима: у Twitch API нужен токен, decapi.me отдаёт его без ключа и с CORS.
 // Ответ — «tupa_borov is offline» или аптайм вида «2 hours, 15 minutes, 3 seconds».
 let twitch = null;
@@ -1106,6 +1181,7 @@ load();
 setInterval(load, 5 * 60000);
 loadTwitch();
 setInterval(loadTwitch, 2 * 60000);
+loadClips();
 setInterval(tickLive, 1000);
 </script>
 </body>

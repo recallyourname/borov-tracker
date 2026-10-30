@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["index.html", "scripts/**", ".github/workflows/**"]
+    paths: ["index.html", "clips.json", "scripts/**", ".github/workflows/**"]
 
 permissions:
   contents: write
@@ -34,17 +34,19 @@ jobs:
       - run: python scripts/update.py
         env:
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+      - run: python scripts/clips.py
+        continue-on-error: true
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.json data/borov.db
+          git add data.json data/borov.db clips.json
           git diff --cached --quiet || git commit -m "data: $(date -u +%Y-%m-%dT%H:%MZ)"
           # пока шёл сбор, в main могли запушить код — подтягиваем его, данные из этого прогона в приоритете
           git pull --rebase -X theirs
           git push
       - name: Build site
-        run: mkdir -p _site && cp index.html data.json _site/
+        run: mkdir -p _site && cp index.html data.json clips.json _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
