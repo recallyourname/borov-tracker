@@ -63,4 +63,4 @@ jobs:
           
           print(f"итого {total} матчей за {time.time() - t0:.0f}s")
           PY
-          python3 demo.py
+          curl -s "https://api.steampowered.com/IDOTA2Match_570/GetMatchHistoryBySequenceNum/v1/?key=$STEAM_API_KEY&start_at_match_seq_num=7615626621&matches_requested=1" | python3 -c "import json,sys;m=json.load(sys.stdin)['result']['matches'][0];print('MATCH', m['match_id'], m['match_seq_num'], [(x.get('account_id'), x['hero_id']) for x in m['players']])"
