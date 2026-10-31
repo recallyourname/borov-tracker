@@ -361,11 +361,11 @@ def refill(db, limit):
 def main(od_limit=OD_PER_RUN):
     db = connect()
     const = load_constants(db)
-    if STEAM_KEY:
-        added = from_steam(db, const["heroes"])
-        status = "unavailable" if added is None else "ok"
-        if added is not None:
-            print(f"steam: {added} new matches")
+    # Valve отдаёт историю, только если игрок открыл публичные данные матчей; иначе — Dotabuff.
+    added = from_steam(db, const["heroes"]) if STEAM_KEY else None
+    if added is not None:
+        status = "ok"
+        print(f"steam: {added} new matches")
     else:
         status = from_dotabuff(db)
     kv_set(db, "scrape_status", status)
