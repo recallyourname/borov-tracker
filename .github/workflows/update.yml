@@ -33,6 +33,7 @@ jobs:
           python-version: "3.12"
       - run: python scripts/update.py
         env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
       - run: python scripts/clips.py
         continue-on-error: true

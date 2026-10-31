@@ -2,7 +2,9 @@
 """Собирает матчи игрока 226241953 в локальную SQLite-базу и строит data.json для страницы.
 
 Источники:
-- Dotabuff (главная профиля через r.jina.ai) — 15 последних матчей и календарь W-L по дням.
+- Steam Web API GetMatchHistory (нужен STEAM_API_KEY) — id последних матчей; базовые поля нового матча берём
+  из OpenDota /matches/{id}, а если там его ещё нет — из Steam GetMatchDetails.
+- Без ключа — Dotabuff (главная профиля через r.jina.ai): 15 последних матчей и календарь W-L по дням.
 - OpenDota /matches/{id} — детали матча (предметы, NW, GPM). История игрока на OpenDota скрыта,
   но отдельные матчи по ID отдаются.
 
@@ -39,6 +41,11 @@ OD_RETRY_DAYS = 3  # матчи моложе стольких дней пере�
 REFILL_PER_RUN = 150  # сколько старых матчей перезапрашивать ради региона и составов за один запуск, пока не догрузим все
 CDN = "https://cdn.cloudflare.steamstatic.com"
 UA = {"User-Agent": "borov-tracker/1.0 (+github actions)"}
+STEAM_KEY = os.environ.get("STEAM_API_KEY")
+STEAM = "https://api.steampowered.com/IDOTA2Match_570"
+STEAM_HISTORY = 25  # сколько последних матчей спрашивать у Steam за запуск
+MODES = {1: "All Pick", 2: "Captains Mode", 3: "Random Draft", 4: "Single Draft", 5: "All Random", 16: "Captains Draft",
+         18: "Ability Draft", 22: "All Pick", 23: "Turbo"}
 # С ключом jina ходит через свои резидентные IP, и Cloudflare Dotabuff пускает свежие запросы.
 JINA_KEY = os.environ.get("JINA_API_KEY")
 RADIANCE = 137
@@ -85,7 +92,7 @@ def get(url, headers=None, timeout=60, tries=3):
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read().decode("utf-8", "replace")
         except Exception as e:  # noqa: BLE001
-            print(f"GET {url} failed ({attempt + 1}/{tries}): {e}", file=sys.stderr)
+            print(f"GET {re.sub(r'key=[^&]+', 'key=***', url)} failed ({attempt + 1}/{tries}): {e}", file=sys.stderr)
             if isinstance(e, urllib.error.HTTPError) and e.code == 404:
                 return None
             time.sleep(5 * (attempt + 1))
@@ -151,6 +158,73 @@ def scrape_dotabuff():
         print(f"dotabuff {'fresh' if fresh else 'cached'}: no profile ({len(html or '')} bytes, "
               f"title {title.group(1) if title else None!r}, start {(html or '')[:120]!r})", file=sys.stderr)
     return None, None, False
+
+
+def steam_history():
+    """id последних матчей игрока из Steam GetMatchHistory или None, если Valve не отдал историю."""
+    d = get_json(f"{STEAM}/GetMatchHistory/v1/?key={STEAM_KEY}&account_id={ACCOUNT}&matches_requested={STEAM_HISTORY}")
+    res = (d or {}).get("result") or {}
+    if res.get("status") != 1:
+        print(f"steam history: {res.get('statusDetail') or 'no response'}", file=sys.stderr)
+        return None
+    return [m["match_id"] for m in res.get("matches") or []]
+
+
+def basic_row(d, heroes):
+    """Базовые поля матча для upsert_basic из ответа OpenDota /matches/{id} или Steam GetMatchDetails — поля у них общие."""
+    p = next((p for p in (d or {}).get("players") or [] if p.get("account_id") == ACCOUNT), None)
+    if not p or d.get("radiant_win") is None:
+        return None
+    return {
+        "id": d["match_id"], "hero_name": heroes.get(str(p["hero_id"]), {}).get("name") or str(p["hero_id"]),
+        "win": int(d["radiant_win"] == (p["player_slot"] < 128)),
+        "start": datetime.fromtimestamp(d["start_time"], timezone.utc).isoformat(timespec="seconds"),
+        "type": "Ranked" if d.get("lobby_type") == 7 else "Turbo" if d.get("game_mode") == 23 else "Unranked",
+        "mode": MODES.get(d.get("game_mode")), "duration": d.get("duration"),
+        "k": p.get("kills"), "d": p.get("deaths"), "a": p.get("assists"),
+    }
+
+
+def from_steam(db, heroes):
+    """Догружает новые матчи из истории Steam. Число новых или None, если история недоступна."""
+    ids = steam_history()
+    if ids is None:
+        return None
+    known = {r["id"] for r in db.execute("select id from matches")}
+    added = 0
+    for mid in (i for i in ids if i not in known):
+        od = get_json(f"https://api.opendota.com/api/matches/{mid}")
+        row, source = basic_row(od, heroes), "opendota"
+        if not row:
+            # Совсем свежего матча в OpenDota может ещё не быть.
+            row, source = basic_row((get_json(f"{STEAM}/GetMatchDetails/v1/?key={STEAM_KEY}&match_id={mid}") or {}).get("result"), heroes), "steam"
+        if not row:
+            print(f"steam: no details for {mid} yet", file=sys.stderr)
+            continue
+        upsert_basic(db, row, source)
+        if source == "opendota":
+            apply_opendota(db, mid, od)
+        db.commit()
+        added += 1
+        time.sleep(1.1)
+    return added
+
+
+def from_dotabuff(db):
+    """Старый путь без ключа Steam: главная профиля Dotabuff через jina. Статус для scrape_status."""
+    rows, cal, fresh = scrape_dotabuff()
+    if rows and not fresh:
+        # Снимок из кэша нужен, только если в нём есть новые матчи: старый откатил бы календарь за сегодня.
+        known = {r["id"] for r in db.execute("select id from matches")}
+        if all(r["id"] in known for r in rows):
+            rows = None
+    if rows is None:
+        return "unavailable"
+    print(f"dotabuff{'' if fresh else ' (jina cache)'}: {len(rows)} matches, {len(cal)} calendar days")
+    for r in rows:
+        upsert_basic(db, r, "dotabuff-main")
+    db.executemany("insert or replace into calendar(date, w, l) values(?, ?, ?)", [(k, w, l) for k, (w, l) in cal.items()])
+    return "ok" if fresh else "cached"
 
 
 def parse_dotabuff(html):
@@ -286,20 +360,18 @@ def refill(db, limit):
 
 def main(od_limit=OD_PER_RUN):
     db = connect()
-    rows, cal, fresh = scrape_dotabuff()
-    if rows and not fresh:
-        # Снимок из кэша нужен, только если в нём есть новые матчи: старый откатил бы календарь за сегодня.
-        known = {r["id"] for r in db.execute("select id from matches")}
-        if all(r["id"] in known for r in rows):
-            rows = None
-    kv_set(db, "scrape_status", "unavailable" if rows is None else "ok" if fresh else "cached")
-    if rows is None:
-        print("::warning::Dotabuff unavailable, keeping previous data", file=sys.stderr)
+    const = load_constants(db)
+    if STEAM_KEY:
+        added = from_steam(db, const["heroes"])
+        status = "unavailable" if added is None else "ok"
+        if added is not None:
+            print(f"steam: {added} new matches")
     else:
-        print(f"dotabuff{'' if fresh else ' (jina cache)'}: {len(rows)} matches, {len(cal)} calendar days")
-        for r in rows:
-            upsert_basic(db, r, "dotabuff-main")
-        db.executemany("insert or replace into calendar(date, w, l) values(?, ?, ?)", [(k, w, l) for k, (w, l) in cal.items()])
+        status = from_dotabuff(db)
+    kv_set(db, "scrape_status", status)
+    if status == "unavailable":
+        print("::warning::Match source unavailable, keeping previous data", file=sys.stderr)
+    else:
         kv_set(db, "scraped_at", datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
     profile = get_json(f"https://api.opendota.com/api/players/{ACCOUNT}")
@@ -307,7 +379,6 @@ def main(od_limit=OD_PER_RUN):
         pr = profile["profile"]
         kv_set(db, "profile", {"name": pr.get("personaname"), "avatar": pr.get("avatarfull"),
                                "rank_tier": profile.get("rank_tier"), "leaderboard_rank": profile.get("leaderboard_rank")})
-    const = load_constants(db)
     db.commit()
 
     n = fill_details(db, od_limit)
