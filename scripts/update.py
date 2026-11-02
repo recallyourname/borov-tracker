@@ -25,6 +25,8 @@ ACCOUNT = 226241953
 ROOT = Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "borov.db"
 OUT = ROOT / "data.json"
+HISTORY_OUT = ROOT / "history.json"
+HISTORY_TOP_HEROES = 12  # сколько героев показывать в блоке «Вся история»
 
 # Опорная точка рейтинга; от неё ±25 за каждую ранкед-игру вперёд и назад.
 # Назад считаем до 31.07.2026 — патч 7.41e пересчитал шкалу MMR.
@@ -386,6 +388,7 @@ def main(od_limit=OD_PER_RUN):
     print(f"opendota refill tried: {refill(db, REFILL_PER_RUN)}")
 
     OUT.write_text(json.dumps(build_output(db, const), ensure_ascii=False, separators=(",", ":")))
+    HISTORY_OUT.write_text(json.dumps(history_list(load_history(db, const["heroes"])), ensure_ascii=False, separators=(",", ":")))
     db.close()
     print("ok")
 
@@ -437,6 +440,66 @@ def build_output(db, const):
         "form": {"n": len(ranked := [m for m in all_rows if m["type"] == "Ranked"][:FORM]),
                  "w": sum(m["win"] for m in ranked)},
         "stats": period_stats(all_rows, items, days, const.get("regions", {}), heroes),
+        "history": history_stats(load_history(db, heroes)),
+    }
+
+
+def load_history(db, heroes):
+    """Все матчи базы, новые сверху, с героем и картинкой. Старые матчи из Dotabuff знают героя только по имени."""
+    by_name = {h["name"]: h for h in heroes.values()}
+    by_name["Outworld Destroyer"] = by_name.get("Outworld Devourer") or by_name.get("Outworld Destroyer")
+    rows = []
+    for r in db.execute("select id, start, hero_id, hero_name, win, type, duration, k, d, a from matches order by start desc"):
+        m = dict(r)
+        hero = heroes.get(str(m["hero_id"])) or by_name.get(m["hero_name"]) or {}
+        m["hero"], m["hero_img"] = hero.get("name") or m["hero_name"] or "?", hero.get("img")
+        rows.append(m)
+    return rows
+
+
+def history_stats(rows):
+    """Сводка за всю историю для блока «Вся история»: годы, герои, серии и рекорды."""
+    years = {}
+    for m in rows:
+        y = years.setdefault(m["start"][:4], {"year": m["start"][:4], "n": 0, "w": 0, "rn": 0, "rw": 0})
+        y["n"] += 1
+        y["w"] += m["win"]
+        if m["type"] == "Ranked":
+            y["rn"] += 1
+            y["rw"] += m["win"]
+
+    heroes = {}
+    for m in rows:
+        if m["hero_img"]:
+            h = heroes.setdefault(m["hero"], {"hero": m["hero"], "img": m["hero_img"], "n": 0, "w": 0})
+            h["n"] += 1
+            h["w"] += m["win"]
+
+    def record(key, f):
+        with_val = [m for m in rows if f(m) is not None]
+        m = max(with_val, key=f, default=None)
+        return m and {"key": key, "value": f(m), "id": m["id"], "start": m["start"], "hero": m["hero"], "img": m["hero_img"], "win": bool(m["win"])}
+
+    return {
+        "n": len(rows),
+        "w": sum(m["win"] for m in rows),
+        "first": rows[-1]["start"] if rows else None,
+        "years": sorted(years.values(), key=lambda y: y["year"], reverse=True),
+        "heroes": sorted(heroes.values(), key=lambda h: (-h["n"], -h["w"]))[:HISTORY_TOP_HEROES],
+        "streaks": streak_stats([m for m in rows if m["type"] == "Ranked"]),
+        "records": [record("kills", lambda m: m["k"]), record("deaths", lambda m: m["d"]),
+                    record("assists", lambda m: m["a"]), record("duration", lambda m: m["duration"])],
+    }
+
+
+def history_list(rows):
+    """Компактный список всех матчей для history.json: страница подгружает его отдельно от data.json."""
+    names = sorted({m["hero"] for m in rows})
+    idx = {n: i for i, n in enumerate(names)}
+    imgs = {m["hero"]: m["hero_img"] for m in rows}
+    return {
+        "heroes": [[n, imgs[n]] for n in names],
+        "matches": [[m["id"], m["start"][:16], idx[m["hero"]], m["win"], m["type"], m["duration"], m["k"], m["d"], m["a"]] for m in rows],
     }
 
 

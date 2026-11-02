@@ -41,13 +41,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.json data/borov.db clips.json
+          git add data.json history.json data/borov.db clips.json
           git diff --cached --quiet || git commit -m "data: $(date -u +%Y-%m-%dT%H:%MZ)"
           # пока шёл сбор, в main могли запушить код — подтягиваем его, данные из этого прогона в приоритете
           git pull --rebase -X theirs
           git push
       - name: Build site
-        run: mkdir -p _site && cp index.html data.json clips.json _site/
+        run: mkdir -p _site && cp index.html data.json history.json clips.json _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

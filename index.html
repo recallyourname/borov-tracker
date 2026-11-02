@@ -316,6 +316,16 @@ a.db:hover { border-color: var(--gold); color: var(--gold); text-decoration: non
 a.db:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 
 /* shame */
+.hgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 18px 28px; align-items: start; }
+.hgrid > div { display: grid; gap: 10px; min-width: 0; }
+.hrecs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.hrecs a { color: inherit; text-decoration: none; }
+.hyears { flex-wrap: wrap; }
+.hl-wrap { margin-bottom: 0; }
+table.h.hl { min-width: 620px; }
+table.h.hl .hero img { height: 30px; width: auto; }
+.more { justify-self: center; font: 600 14px var(--f-head); letter-spacing: .04em; color: var(--text); background: var(--panel-2); border: 0; border-radius: 8px; padding: 8px 18px; cursor: pointer; }
+.more:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .slist { display: grid; gap: 2px; }
 .srow { display: grid; grid-template-columns: 22px 50px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
 .srow:first-child { border-top: 0; }
@@ -519,6 +529,11 @@ const I18N = {
     calcBase: (h, p, g) => `база — ${h}: ${p}% за ${g}`, calcEmpty: "Накидайте союзников и врагов — посчитаю шансы",
     calcExact: (n, w) => n ? `ровно такой расклад был ${n} ${ruPlural(n, "раз", "раза", "раз")}: ${w}-${n - w}` : "ровно такой расклад ещё не попадался",
     calcNote: "Винрейт пика плюс поправка за каждого героя; чем меньше игр с героем, тем поправка ближе к нулю",
+    hist: "Вся история", histSub: (n, w, y) => `${n} ${ruPlural(n, "матч", "матча", "матчей")} с ${y} · ${w}-${n - w}`,
+    histByYear: "По годам", histHeroes: "Самые частые герои", histRecords: "Рекорды", histAll: "Все",
+    histYearCols: ["Год", "Игр", "WR", "Ранкед", "WR"], histCols: ["Герой", "Результат", "Дата", "Длительность", "KDA", "Матч"],
+    histRec: { kills: "Больше всего убийств", deaths: "Больше всего смертей", assists: "Больше всего помощи", duration: "Самая долгая игра" },
+    histWin: "Лучшая серия ранкеда", histLoss: "Худшая серия ранкеда", histMore: n => `Показать ещё (осталось ${n})`, histLoading: "Загружаю список матчей…", histErr: "Не удалось загрузить список матчей",
   },
   es: {
     slotName: "Casino Borovo", noteHd: "Casino<br>cerrado", noteRead: "leer", noteClose: "cerrar ✕", noteSign: "La administración",
@@ -570,6 +585,11 @@ const I18N = {
     calcBase: (h, p, g) => `base — ${h}: ${p}% en ${g}`, calcEmpty: "Añade aliados y rivales y calculo las probabilidades",
     calcExact: (n, w) => n ? `esta alineación exacta salió ${n} ${n === 1 ? "vez" : "veces"}: ${w}-${n - w}` : "esta alineación exacta aún no ha salido",
     calcNote: "Winrate del pick más un ajuste por cada héroe; con pocas partidas el ajuste se acerca a cero",
+    hist: "Historial completo", histSub: (n, w, y) => `${n} partidas desde ${y} · ${w}-${n - w}`,
+    histByYear: "Por años", histHeroes: "Héroes más jugados", histRecords: "Récords", histAll: "Todas",
+    histYearCols: ["Año", "Part.", "WR", "Clasif.", "WR"], histCols: ["Héroe", "Resultado", "Fecha", "Duración", "KDA", "Partida"],
+    histRec: { kills: "Más kills", deaths: "Más muertes", assists: "Más asistencias", duration: "Partida más larga" },
+    histWin: "Mejor racha clasificatoria", histLoss: "Peor racha clasificatoria", histMore: n => `Mostrar más (quedan ${n})`, histLoading: "Cargando la lista de partidas…", histErr: "No se pudo cargar la lista de partidas",
   },
 };
 // Язык: ?lang=es в ссылке, потом выбор из прошлого визита, по умолчанию русский.
@@ -594,6 +614,7 @@ const ago = iso => {
 };
 const when = iso => new Date(iso).toLocaleString(S.locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 const games = n => S.games(n);
+const dFull = iso => new Date(iso).toLocaleDateString(S.locale, { day: "2-digit", month: "2-digit", year: "numeric" });
 const GOAL = 7000;
 const RANKS = ["", "Herald", "Guardian", "Crusader", "Archon", "Legend", "Ancient", "Divine", "Immortal"];
 const RAD_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/radiance.png";
@@ -605,6 +626,9 @@ let calc = { pick: null, allies: [], enemies: [], side: "allies", q: "" };
 const CALC_K = 20;  // сколько «виртуальных» игр тянут винрейт героя к базе
 const CALC_MAX = { pick: 1, allies: 4, enemies: 5 };
 const VS_MIN = 15;  // меньше игр против героя — винрейт слишком шумный
+const HIST_PAGE = 50;  // сколько матчей добавляет кнопка «показать ещё»
+// выбранный год живёт вне render, чтобы автообновление не сбрасывало список; history.json грузим один раз
+let histList = null, histYear = "all", histShown = HIST_PAGE;
 
 async function load() {
   try {
@@ -759,6 +783,8 @@ function render(d) {
       </div>
     </div>
 
+    <div class="card acc-gold c12" id="histCard"></div>
+
     <div class="card c8 chart fill">
       <div class="ch"><h2>${S.daily}</h2><span class="sub">${S.dailySub(d.step, dShort(d.history_from))}</span></div>
       <div class="sc"><div id="dayChart"></div></div>
@@ -826,10 +852,97 @@ function render(d) {
   drawDays(d);
   drawMatches(d);
   drawRegions(st.regions || []);
+  renderHistory(d.history);
   let rt;
   onresize = () => { clearTimeout(rt); rt = setTimeout(() => { drawDays(d); bindTips($("#dayChart")); }, 150); };
   bindTips($("#app"));
   tickLive();
+}
+
+function renderHistory(h) {
+  const el = $("#histCard");
+  if (!el || !h?.n) return;
+  const wrCell = (w, n) => { const p = pct({ w, n }); return p == null ? "—" : `<b class="${p >= 50 ? "w" : "l"}">${p}%</b>`; };
+  const recVal = r => r.key === "duration" ? dur(r.value) : r.value;
+  const streakCell = (name, s, cls) => s ? `<div class="tile"><span class="k">${name}</span><span class="v ${cls}">${s.n}</span><span class="s">${dFull(s.from)} – ${dFull(s.to)}</span></div>` : "";
+  el.innerHTML = `
+    <div class="ch"><h2>${S.hist}</h2><span class="sub">${S.histSub(h.n, h.w, h.first.slice(0, 4))}</span></div>
+    <div class="hgrid">
+      <div>
+        <span class="lbl">${S.histByYear}</span>
+        <table class="wtab"><thead><tr>${S.histYearCols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>
+          ${h.years.map(y => `<tr><td><b>${y.year}</b></td><td>${y.n}</td><td>${wrCell(y.w, y.n)}</td><td>${y.rn}</td><td>${wrCell(y.rw, y.rn)}</td></tr>`).join("")}
+        </tbody></table>
+      </div>
+      <div>
+        <span class="lbl">${S.histHeroes}</span>
+        <div class="ilist">${h.heroes.map(x => {
+          const wr = Math.round(x.w / x.n * 100);
+          return `<div class="hrow"><img src="${esc(x.img)}" alt="" loading="lazy"><div><div class="nm">${esc(x.hero)}</div><div class="bar" style="width:${Math.max(6, x.n / h.heroes[0].n * 100)}%"><span class="bw" style="flex:${x.w}"></span><span class="bl" style="flex:${x.n - x.w}"></span></div></div><div class="wlc">${games(x.n)}<br>${x.w}-${x.n - x.w}</div><div class="pct ${wr >= 50 ? "w" : "l"}">${wr}%</div></div>`;
+        }).join("")}</div>
+      </div>
+      <div>
+        <span class="lbl">${S.histRecords}</span>
+        <div class="hrecs">
+          ${streakCell(S.histWin, h.streaks.win, "w")}
+          ${streakCell(S.histLoss, h.streaks.loss, "l")}
+          ${h.records.filter(Boolean).map(r => `<a class="tile" href="https://www.dotabuff.com/matches/${r.id}" target="_blank" rel="noopener" aria-label="${S.onDb(r.id)}"><span class="k">${S.histRec[r.key]}</span><span class="v">${recVal(r)}</span><span class="s">${esc(r.hero)} · ${dFull(r.start)}</span></a>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="seg hyears" id="histYears">
+      ${[["all", S.histAll], ...h.years.map(y => [y.year, y.year])].map(([v, t]) => `<button type="button" data-y="${v}" aria-pressed="${histYear === v}">${t}</button>`).join("")}
+    </div>
+    <div id="histList"></div>`;
+  $("#histYears").addEventListener("click", e => {
+    const b = e.target.closest("[data-y]");
+    if (!b) return;
+    histYear = b.dataset.y;
+    histShown = HIST_PAGE;
+    $("#histYears").querySelectorAll("[data-y]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    drawHistList();
+  });
+  drawHistList();
+  if (!histList) loadHistList();
+}
+
+async function loadHistList() {
+  histList = "loading";
+  try {
+    const r = await fetch("history.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    histList = await r.json();
+  } catch {
+    histList = "error";
+  }
+  drawHistList();
+}
+
+function drawHistList() {
+  const el = $("#histList");
+  if (!el) return;
+  if (!histList?.matches) {
+    el.innerHTML = `<div class="sub">${histList === "error" ? S.histErr : S.histLoading}</div>`;
+    return;
+  }
+  const rows = histYear === "all" ? histList.matches : histList.matches.filter(m => m[1].startsWith(histYear));
+  const left = rows.length - histShown;
+  el.innerHTML = `<div class="hist-wrap hl-wrap"><table class="h hl">
+    <thead><tr>${S.histCols.map((c, i) => `<th${i === 5 ? ' class="c"' : ""}>${c}</th>`).join("")}</tr></thead>
+    <tbody>${rows.slice(0, histShown).map(([id, start, hero, win, type, duration, k, d, a]) => {
+      const [name, img] = histList.heroes[hero];
+      return `<tr class="${win ? "win" : "loss"}">
+        <td><div class="hero">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : ""}<div><b>${esc(name)}</b></div></div></td>
+        <td><span class="res ${win ? "w" : "l"}">${win ? S.win : S.loss}</span><span class="sub">${esc(type || "")}</span></td>
+        <td>${dFull(start + ":00Z")}</td>
+        <td>${dur(duration)}</td>
+        <td class="kda">${k == null ? "—" : `<b>${k}</b> / <b class="l">${d}</b> / <b>${a}</b>`}</td>
+        <td class="c"><a class="db" href="https://www.dotabuff.com/matches/${id}" target="_blank" rel="noopener" aria-label="${S.onDb(id)}">Dotabuff ↗</a></td>
+      </tr>`;
+    }).join("")}</tbody></table></div>
+    ${left > 0 ? `<div style="display:grid;margin-top:12px"><button type="button" class="more" id="histMore">${S.histMore(left)}</button></div>` : ""}`;
+  $("#histMore")?.addEventListener("click", () => { histShown += HIST_PAGE; drawHistList(); });
 }
 
 function farmTiles(f) {
