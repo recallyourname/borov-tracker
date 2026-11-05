@@ -176,6 +176,32 @@ svg .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .hrow .wlc { font-size: 13px; color: var(--muted); text-align: right; }
 .pct { font: 700 20px var(--f-head); text-align: right; }
 
+/* поросёнок */
+.arcade { margin-left: auto; display: grid; gap: 6px; }
+.arcade .slot { margin-left: 0; }
+.arcade + .live { margin-left: 0; }
+.pigbtn { display: flex; align-items: center; gap: 8px; padding: 3px 12px 3px 8px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); color: var(--text); cursor: pointer; font: inherit; transition: border-color .2s; }
+.pigbtn:hover { border-color: #ff9db2; }
+.pigbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.pigbtn canvas { width: 34px; height: 28px; display: block; }
+.pig-name { font: 700 12px var(--f-head); letter-spacing: .14em; text-transform: uppercase; color: #ff9db2; }
+.pig-sub { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.pigd { padding: 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; }
+.pigd::backdrop { background: #06080bd9; }
+body:has(.pigd[open]) { overflow: hidden; }
+.pigd-in { display: grid; gap: 10px; width: min(calc(100vw - 42px), calc((100dvh - 146px) * .625), 460px); min-width: 240px; }
+.pigd-bar { display: flex; align-items: center; gap: 8px; }
+.pigd-bar h2 { font-size: 24px; font-weight: 700; line-height: 1; margin-right: auto; }
+.pigd button { font: 600 15px var(--f-head); letter-spacing: .03em; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+.pigd button:hover { color: var(--text); }
+.pigd button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+#pigGame:focus { outline: none; }
+#pigClose { font-size: 20px; line-height: 1; padding: 3px 10px 5px; }
+#pigGame { width: 100%; aspect-ratio: 5 / 8; display: block; border-radius: 10px; background: #10151d; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pigd-skins { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.pigd-skins button { padding-inline: 2px; overflow: hidden; text-overflow: ellipsis; }
+.pigd-skins button[aria-pressed="true"] { color: #1a1206; background: var(--gold); border-color: var(--gold); }
+
 /* casino */
 .top .wrap { position: relative; }
 .slot { margin-left: auto; display: flex; align-items: center; gap: 8px; padding: 8px 6px 8px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); transition: border-color .2s, box-shadow .2s; }
@@ -393,6 +419,8 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 @media (max-width: 820px) {
   .live { margin-left: 0; justify-items: start; }
   .slot { order: 3; margin-left: 0; }
+  .arcade { order: 3; margin-left: 0; }
+  .arcade .slot { order: 0; }
   .who h1 { font-size: 34px; }
   .who h1 .nick { font-size: 24px; }
   .chart svg { min-width: 620px; }
@@ -425,6 +453,12 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
         </div>
       </div>
     </div>
+    <div class="arcade">
+    <button class="pigbtn" id="pigBtn" type="button">
+      <canvas id="pigIcon" width="68" height="56" aria-hidden="true"></canvas>
+      <span class="pig-name" id="pigName">Поросёнок</span>
+      <span class="pig-sub" id="pigSub"></span>
+    </button>
     <div class="slot" id="slot">
       <div class="slot-body">
         <div class="slot-hd"><span class="slot-name" id="slotName">Борово-казино</span><span class="slot-cnt" id="slotCnt"></span></div>
@@ -437,6 +471,7 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
         <span class="track"></span>
         <span class="arm"><span class="stick"></span><span class="knob"></span></span>
       </button>
+    </div>
     </div>
     <div class="live" id="live">
       <span class="dot" id="schedule">До планового обновления</span>
@@ -455,11 +490,27 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 <div class="tip" id="tip"></div>
 
+<dialog class="pigd" id="pigDlg" aria-labelledby="pigTitle">
+  <div class="pigd-in">
+    <div class="pigd-bar">
+      <h2 id="pigTitle">Поросёнок</h2>
+      <button type="button" id="pigMute"></button>
+      <button type="button" id="pigClose">×</button>
+    </div>
+    <canvas id="pigGame" tabindex="0"></canvas>
+    <div class="pigd-skins" id="pigSkins" role="group"></div>
+  </div>
+</dialog>
+
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const I18N = {
   ru: {
+    pig: { btn: "Поросёнок", play: "Сыграть", best: n => `Рекорд ${n}`, hint: "Тап или пробел: прыжок", title: ["ФЛЭППИ", "БОРОВ"], burn: "ОЖОГ +2", score: "очков", record: "рекорд", again: "Нажми, чтобы сыграть ещё",
+      verdicts: ["Сгорел ещё на линии", "Радик опять не окупился", "Фарм был, катки не было", "Красиво, но всё равно минус", "Тебя уже репортят"],
+      soundOn: "Звук: вкл", soundOff: "Звук: выкл", close: "Закрыть", skin: "Скин", aria: "Игра: поросёнок прыгает между мечами Radiance. Нажмите, чтобы прыгнуть.",
+      skins: { base: "Розовый", spectre: "Spectre", midas: "Мидас", ash: "Пепел" } },
     slotName: "Борово-казино", slotCnt: (s, j) => `спинов ${s} · джекпотов ${j}`, slotPull: "Дёрнуть ручку",
     slot: { idle: "Дёрни ручку →", spin: "Крутим…", miss: "Мимо. Как его ММР", close: "Два Радика… третий ушёл в рапиру",
       triple: "Три одинаковых, но не Радик", down: "Три минуса · −75 ММР", spectre: "Спектра, Спектра, Спектра", jackpot: "Джекпот · три Радика" },
@@ -516,6 +567,10 @@ const I18N = {
     histWin: "Лучшая серия ранкеда", histLoss: "Худшая серия ранкеда", histMore: n => `Показать ещё (осталось ${n})`, histLoading: "Загружаю список матчей…", histErr: "Не удалось загрузить список матчей",
   },
   es: {
+    pig: { btn: "Cerdito", play: "Jugar", best: n => `Récord ${n}`, hint: "Toca o espacio: saltar", title: ["FLAPPY", "BOROV"], burn: "QUEMADO +2", score: "puntos", record: "récord", again: "Pulsa para jugar otra vez",
+      verdicts: ["Quemado ya en la línea", "El Radiance no se amortizó", "Mucho farm, ninguna victoria", "Bonito, pero sigue en negativo", "Ya te están reportando"],
+      soundOn: "Sonido: sí", soundOff: "Sonido: no", close: "Cerrar", skin: "Aspecto", aria: "Juego: el cerdito salta entre espadas Radiance. Pulsa para saltar.",
+      skins: { base: "Rosa", spectre: "Spectre", midas: "Midas", ash: "Ceniza" } },
     slotName: "Casino Borovo", slotCnt: (s, j) => `tiradas ${s} · botes ${j}`, slotPull: "Tirar de la palanca",
     slot: { idle: "Tira de la palanca →", spin: "Girando…", miss: "Fallo. Como su MMR", close: "Dos Radiance… el tercero se fue en Rapier",
       triple: "Tres iguales, pero no Radiance", down: "Tres menos · −75 MMR", spectre: "Spectre, Spectre, Spectre", jackpot: "Bote · tres Radiance" },
@@ -1250,6 +1305,7 @@ function applyLang(next) {
   if (DATA) render(DATA); else $("#app .err").textContent = S.loading;
   showTwitch();
   showSlot();
+  pigGame.show();
   renderClips();
 }
 
@@ -1374,6 +1430,505 @@ function pullLever() {
 }
 slot.reels.forEach((v, i) => setReel(i, SYMBOLS[v] ? v : 0));
 $("#lever").addEventListener("click", pullLever);
+
+// Флэппи Боров: поросёнок прыгает между Радиками. Спрайты и шрифт грузятся при первом открытии.
+const pigGame = (() => {
+  const FONT_H = '"Sofia Sans Extra Condensed", "Arial Narrow", system-ui, sans-serif';
+  const FONT_B = 'Inter, "Segoe UI", system-ui, sans-serif';
+  const OUT = "#22121a";
+  const G = { W: 400, H: 640, FLOOR: 562, PIG_X: 110, R: 15, PIG_S: .8, GRAV: 1500, JUMP: -430, VMAX: 640, SPEED: 150, SPEED_K: 1.2, SPEED_CAP: 40, GAP0: 170, GAPMIN: 140, SPACING: 240, BURN: 20 };
+  const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const pigRot = v => clamp(v / 600, -.45, 1.2);
+
+  const SKINS = {
+    base:    { name: "Розовый", a: "#ffc0cb", b: "#e87f9c", snout: "#ffa3b5", hoof: "#6d3a48", ear: "#e36f8f", nost: "#7b3a4b", blush: "#ff6f8e", eye: "#20141a" },
+    spectre: { name: "Spectre", a: "#c1a6f5", b: "#6a44ba", snout: "#a385e6", hoof: "#2a1c4c", ear: "#5f3cae", nost: "#2a1c4c", blush: "#e05be0", eye: "#067f90" },
+    midas:   { name: "Мидас",   a: "#ffe697", b: "#d99a2c", snout: "#f6cb63", hoof: "#7a5414", ear: "#c98a22", nost: "#7a5414", blush: "#ff9d3c", eye: "#3a2406" },
+    ash:     { name: "Пепел",   a: "#7d6c69", b: "#332a28", snout: "#8d6a62", hoof: "#191312", ear: "#3b302d", nost: "#120d0c", blush: "#d65c58", eye: "#20141a" },
+  };
+
+  /* ───────── Модель поросёнка ───────── */
+  function fillStroke(c, fill) { c.fillStyle = fill; c.fill(); c.stroke(); }
+  function ell(c, x, y, rx, ry) { c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); }
+  function vGrad(c, y0, y1, a, b) { const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, a); g.addColorStop(1, b); return g; }
+
+  function leg(c, x, y, ang, sk) {
+    c.save(); c.translate(x, y); c.rotate(ang);
+    c.beginPath(); c.roundRect(-4.6, 0, 9.2, 13, 3.5); fillStroke(c, sk.b);
+    c.beginPath(); c.roundRect(-4.6, 8.5, 9.2, 4.5, 2); fillStroke(c, sk.hoof);
+    c.restore();
+  }
+  function earShape(c, px, py, ang, fill) {
+    c.save(); c.translate(px, py); c.rotate(ang);
+    c.beginPath(); c.moveTo(-6, 2); c.quadraticCurveTo(-7, -10, 2, -14); c.quadraticCurveTo(9, -6, 6, 2); c.closePath();
+    fillStroke(c, fill); c.restore();
+  }
+  function curl(c, sk) {
+    const path = () => { c.beginPath(); c.moveTo(-22, -5); c.bezierCurveTo(-33, -9, -37, -20, -30, -22); c.bezierCurveTo(-23, -24, -23, -14, -30, -15); };
+    path(); c.strokeStyle = OUT; c.lineWidth = 6; c.stroke();
+    path(); c.strokeStyle = sk.b; c.lineWidth = 2.8; c.stroke();
+    c.strokeStyle = OUT; c.lineWidth = 2.6;
+  }
+  function pigSide(c, o) {
+    const { x, y, s = 1, rot = 0, skin: sk = SKINS.base, legs = 0, ear = 0, face = "normal" } = o;
+    c.save(); c.translate(x, y); c.rotate(rot); c.scale(s, s);
+    c.lineJoin = "round"; c.lineCap = "round"; c.strokeStyle = OUT; c.lineWidth = 2.6;
+    curl(c, sk);
+    leg(c, -6, 13, legs * .9 + .1, sk);
+    leg(c, 13, 12, legs * .9 + .1, sk);
+    ell(c, -2, 3, 24, 19); fillStroke(c, vGrad(c, -16, 22, sk.a, sk.b));
+    c.save(); c.globalAlpha = .28; ell(c, -7, -7, 12, 6); c.fillStyle = "#fff"; c.fill(); c.restore();
+    leg(c, -14, 14, legs + .05, sk);
+    leg(c, 5, 15, legs, sk);
+    earShape(c, 21, -19, .35 + ear * .5, sk.ear);
+    c.beginPath(); c.arc(15, -7, 15.5, 0, Math.PI * 2); fillStroke(c, vGrad(c, -22, 9, sk.a, sk.b));
+    earShape(c, 8, -19, -.3 - ear * .75, sk.ear);
+    c.save(); c.globalAlpha = .5; ell(c, 13, -1, 4.2, 3); c.fillStyle = sk.blush; c.fill(); c.restore();
+    ell(c, 29, -4, 8.6, 7.2); fillStroke(c, sk.snout);
+    c.fillStyle = sk.nost; ell(c, 26.5, -5, 1.4, 2.3); c.fill(); ell(c, 31.5, -5, 1.4, 2.3); c.fill();
+    pigFace(c, sk, face);
+    c.restore();
+  }
+  function pigFace(c, sk, face) {
+    const ex = 19, ey = -12;
+    c.strokeStyle = OUT; c.lineWidth = 2.2;
+    if (face === "dead") {
+      c.beginPath(); c.moveTo(ex - 3.5, ey - 3.5); c.lineTo(ex + 3.5, ey + 3.5); c.moveTo(ex + 3.5, ey - 3.5); c.lineTo(ex - 3.5, ey + 3.5); c.stroke();
+      c.beginPath(); c.moveTo(19, 3); c.quadraticCurveTo(24, 1, 28, 4); c.stroke();
+      c.beginPath(); c.moveTo(24, 3); c.quadraticCurveTo(25, 10, 28, 8); c.quadraticCurveTo(29, 5, 28, 4); c.fillStyle = "#e0506e"; c.fill(); c.stroke();
+    } else if (face === "burn") {
+      c.beginPath(); c.moveTo(ex - 4, ey - 3); c.lineTo(ex + 3, ey); c.lineTo(ex - 4, ey + 3); c.stroke();
+      c.beginPath(); c.moveTo(18, 4); c.lineTo(20.5, 2.5); c.lineTo(23, 4.5); c.lineTo(25.5, 2.5); c.stroke();
+      c.beginPath(); c.moveTo(10, -18); c.quadraticCurveTo(6, -12, 9.5, -11); c.quadraticCurveTo(13, -12, 10, -18); c.fillStyle = "#8fdcff"; c.fill(); c.lineWidth = 1.4; c.stroke();
+    } else if (face === "wide") {
+      c.beginPath(); c.arc(ex, ey, 5.8, 0, 7); fillStroke(c, "#fff");
+      c.fillStyle = sk.eye; c.beginPath(); c.arc(ex + 2, ey - .8, 2, 0, 7); c.fill();
+      ell(c, 22, 4, 3.6, 3.1); fillStroke(c, "#6d2436");
+    } else if (face === "down") {
+      c.beginPath(); c.arc(ex, ey, 4.9, 0, 7); fillStroke(c, "#fff");
+      c.fillStyle = sk.eye; c.beginPath(); c.arc(ex + 1.2, ey + 2, 2.4, 0, 7); c.fill();
+      c.beginPath(); c.moveTo(ex - 5, ey - 7); c.lineTo(ex + 4, ey - 9); c.stroke();
+      c.beginPath(); c.arc(22, 7, 3.4, Math.PI * 1.15, Math.PI * 1.85); c.stroke();
+    } else {
+      c.beginPath(); c.arc(ex, ey, 4.9, 0, 7); fillStroke(c, "#fff");
+      c.fillStyle = sk.eye; c.beginPath(); c.arc(ex + 1.6, ey, 2.7, 0, 7); c.fill();
+      c.fillStyle = "#fff"; c.beginPath(); c.arc(ex + 2.6, ey - 1.2, .9, 0, 7); c.fill();
+      c.beginPath(); c.arc(21, 1.5, 3.8, Math.PI * .2, Math.PI * .85); c.stroke();
+    }
+    c.strokeStyle = OUT; c.lineWidth = 2.6;
+  }
+  function pigFront(c, x, y, s, sk) {
+    c.save(); c.translate(x, y); c.scale(s, s);
+    c.lineJoin = "round"; c.lineCap = "round"; c.strokeStyle = OUT; c.lineWidth = 2.6;
+    leg(c, -14, 14, 0, sk); leg(c, 14, 14, 0, sk);
+    ell(c, 0, 7, 23, 18); fillStroke(c, vGrad(c, -10, 25, sk.a, sk.b));
+    c.save(); c.globalAlpha = .28; ell(c, 0, 15, 12, 7); c.fillStyle = "#fff"; c.fill(); c.restore();
+    earShape(c, -13, -20, -.45, sk.ear); earShape(c, 13, -20, .45, sk.ear);
+    c.beginPath(); c.arc(0, -8, 16.5, 0, 7); fillStroke(c, vGrad(c, -24, 8, sk.a, sk.b));
+    c.save(); c.globalAlpha = .5; c.fillStyle = sk.blush; ell(c, -11.5, -2, 3.6, 2.6); c.fill(); ell(c, 11.5, -2, 3.6, 2.6); c.fill(); c.restore();
+    ell(c, 0, -3, 8.6, 6.4); fillStroke(c, sk.snout);
+    c.fillStyle = sk.nost; ell(c, -3, -3.4, 1.4, 2.3); c.fill(); ell(c, 3, -3.4, 1.4, 2.3); c.fill();
+    c.lineWidth = 2.2;
+    for (const d of [-1, 1]) {
+      c.beginPath(); c.arc(d * 7.4, -12.5, 4.4, 0, 7); fillStroke(c, "#fff");
+      c.fillStyle = sk.eye; c.beginPath(); c.arc(d * 7.4, -12, 2.5, 0, 7); c.fill();
+      c.fillStyle = "#fff"; c.beginPath(); c.arc(d * 7.4 + .9, -13, .8, 0, 7); c.fill();
+    }
+    c.beginPath(); c.arc(0, 2.6, 3.4, Math.PI * .2, Math.PI * .8); c.stroke();
+    c.restore();
+  }
+  function pigBack(c, x, y, s, sk) {
+    c.save(); c.translate(x, y); c.scale(s, s);
+    c.lineJoin = "round"; c.lineCap = "round"; c.strokeStyle = OUT; c.lineWidth = 2.6;
+    earShape(c, -13, -20, -.45, sk.ear); earShape(c, 13, -20, .45, sk.ear);
+    c.beginPath(); c.arc(0, -8, 16.5, 0, 7); fillStroke(c, vGrad(c, -24, 8, sk.a, sk.b));
+    leg(c, -14, 14, 0, sk); leg(c, 14, 14, 0, sk);
+    ell(c, 0, 7, 23, 18); fillStroke(c, vGrad(c, -10, 25, sk.a, sk.b));
+    c.save(); c.globalAlpha = .28; ell(c, 0, -2, 14, 6); c.fillStyle = "#fff"; c.fill(); c.restore();
+    const tail = () => { c.beginPath(); c.moveTo(0, 7); c.bezierCurveTo(8, 4, 8, -5, 1, -5); c.bezierCurveTo(-5, -5, -4, 2, 1, 1); };
+    tail(); c.lineWidth = 6; c.stroke(); tail(); c.strokeStyle = sk.b; c.lineWidth = 2.8; c.stroke();
+    c.restore();
+  }
+
+  /* ───────── Модель Радианса ───────── */
+  const BLADE = 30, GUARD = 50, TIP = 36, HILT = 72;
+  function bladeFill(c) {
+    const g = c.createLinearGradient(-BLADE, 0, BLADE, 0);
+    [[0, "#6a350a"], [.16, "#d98a1e"], [.4, "#ffe39a"], [.5, "#fff4cf"], [.6, "#ffd87a"], [.84, "#c9761a"], [1, "#6a350a"]].forEach(s => g.addColorStop(s[0], s[1]));
+    return g;
+  }
+  function runes(c, y0, y1) {
+    c.fillStyle = "#a35a10"; c.fillRect(-5, y0, 10, y1 - y0);
+    for (let y = y0 + 26; y < y1 - 14; y += 56) {
+      c.fillStyle = "#fff5c8"; c.beginPath(); c.moveTo(0, y - 11); c.lineTo(6, y); c.lineTo(0, y + 11); c.lineTo(-6, y); c.closePath(); c.fill();
+      c.fillStyle = "#e0761a"; c.beginPath(); c.moveTo(0, y - 5); c.lineTo(3, y); c.lineTo(0, y + 5); c.lineTo(-3, y); c.closePath(); c.fill();
+    }
+  }
+  function paintTop(c, len) {
+    c.lineJoin = "round"; c.strokeStyle = OUT; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(-BLADE, 0); c.lineTo(-BLADE, len - TIP); c.lineTo(0, len); c.lineTo(BLADE, len - TIP); c.lineTo(BLADE, 0);
+    c.fillStyle = bladeFill(c); c.fill(); c.stroke();
+    c.save(); c.beginPath(); c.moveTo(-BLADE, 0); c.lineTo(-BLADE, len - TIP); c.lineTo(0, len); c.lineTo(BLADE, len - TIP); c.lineTo(BLADE, 0); c.clip();
+    runes(c, 0, len - TIP - 2);
+    c.beginPath(); c.moveTo(0, len - TIP - 6); c.lineTo(0, len); c.strokeStyle = "#a35a10"; c.lineWidth = 3; c.stroke();
+    c.restore();
+  }
+  function paintBot(c, len) {
+    c.lineJoin = "round"; c.strokeStyle = OUT; c.lineWidth = 3;
+    c.beginPath(); c.rect(-BLADE, HILT - 4, BLADE * 2, len); c.fillStyle = bladeFill(c); c.fill(); c.stroke();
+    c.save(); c.beginPath(); c.rect(-BLADE, HILT, BLADE * 2, len); c.clip(); runes(c, HILT, HILT + len); c.restore();
+    c.beginPath(); c.roundRect(-10, 24, 20, 30, 3); c.fillStyle = "#3b1f14"; c.fill(); c.stroke();
+    c.strokeStyle = "#8a5a2a"; c.lineWidth = 2;
+    for (let y = 30; y < 52; y += 6) { c.beginPath(); c.moveTo(-9, y + 2); c.lineTo(9, y - 2); c.stroke(); }
+    c.strokeStyle = OUT; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(-GUARD, 49); c.quadraticCurveTo(-26, 60, -10, 52); c.lineTo(10, 52); c.quadraticCurveTo(26, 60, GUARD, 49);
+    c.quadraticCurveTo(46, 66, 32, 70); c.quadraticCurveTo(14, 74, 0, 72); c.quadraticCurveTo(-14, 74, -32, 70); c.quadraticCurveTo(-46, 66, -GUARD, 49); c.closePath();
+    c.fillStyle = vGrad(c, 48, 74, "#ffe39a", "#b2661a"); c.fill(); c.stroke();
+    ell(c, 0, 62, 6.4, 6.4); c.fillStyle = "#d13b2a"; c.fill(); c.stroke();
+    c.fillStyle = "#ffb9a0"; ell(c, -1.8, 60, 1.6, 1.6); c.fill();
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      c.beginPath(); c.moveTo(Math.cos(a - .28) * 11, 14 + Math.sin(a - .28) * 11); c.lineTo(Math.cos(a) * 19, 14 + Math.sin(a) * 19); c.lineTo(Math.cos(a + .28) * 11, 14 + Math.sin(a + .28) * 11); c.closePath();
+      c.fillStyle = "#f2a22e"; c.fill();
+    }
+    ell(c, 0, 14, 12.5, 12.5); c.fillStyle = vGrad(c, 2, 26, "#fff0b5", "#d17a1c"); c.fill(); c.stroke();
+    ell(c, 0, 14, 5.4, 5.4); c.fillStyle = "#d13b2a"; c.fill(); c.lineWidth = 2; c.stroke();
+  }
+  function sprite(w, h, paint) {
+    const cv = document.createElement("canvas"); cv.width = w * 2; cv.height = h * 2;
+    const c = cv.getContext("2d"); c.scale(2, 2); paint(c); return cv;
+  }
+  const mkTop = () => sprite(160, 720, c => { c.translate(80, 0); paintTop(c, 700); });
+  const mkBot = () => sprite(160, 760, c => { c.translate(80, 20); paintBot(c, 720); });
+
+  function flames(c, y0, y1, half, t) {
+    const pass = (k, fill) => {
+      c.beginPath();
+      for (let y = y0 + 8; y < y1; y += 28) for (const sd of [-1, 1]) {
+        const ph = y * .17 + sd * 1.7, h = (11 + 7 * Math.sin(t * 6 + ph)) * k, xb = sd * half, sw = 3 * Math.sin(t * 9 + ph);
+        c.moveTo(xb, y + 9 * k);
+        c.quadraticCurveTo(xb + sd * h, y + 3, xb + sd * h * .55 + sw, y - 12 * k - h * .8);
+        c.quadraticCurveTo(xb + sd * 1, y - 6, xb, y - 9 * k);
+        c.closePath();
+      }
+      c.fillStyle = fill; c.fill();
+    };
+    c.save(); c.globalCompositeOperation = "lighter";
+    pass(1, "rgba(255,120,24,.72)"); pass(.55, "rgba(255,215,110,.85)");
+    c.restore();
+  }
+  function haze(c, y0, y1, a, fadeAt) {
+    const mk = v => {
+      const g = c.createLinearGradient(-92, 0, 92, 0);
+      [[0, 0], [.12, .08], [.23, .45], [.34, 1], [.66, 1], [.77, .45], [.88, .08], [1, 0]].forEach(([p, m]) => g.addColorStop(p, `rgba(255,130,30,${v * m})`));
+      return g;
+    };
+    const FADE = 80, N = 10, bottom = fadeAt === "bottom";
+    const solid0 = bottom ? y0 : y0 + FADE, solid1 = bottom ? y1 - FADE : y1;
+    c.save(); c.globalCompositeOperation = "lighter";
+    c.fillStyle = mk(a); c.fillRect(-92, solid0, 184, Math.max(0, solid1 - solid0));
+    // край сходит на нет полосками, иначе виден прямоугольник
+    for (let i = 0; i < N; i++) {
+      const y = bottom ? solid1 + i * FADE / N : solid0 - (i + 1) * FADE / N;
+      c.fillStyle = mk(a * (1 - (i + .5) / N)); c.fillRect(-92, y, 184, FADE / N);
+    }
+    c.restore();
+  }
+  function glowAt(c, y, r, a) {
+    const g = c.createRadialGradient(0, y, 2, 0, y, r);
+    g.addColorStop(0, `rgba(255,190,80,${a})`); g.addColorStop(1, "rgba(255,120,20,0)");
+    c.save(); c.globalCompositeOperation = "lighter"; c.fillStyle = g; c.fillRect(-r, y - r, r * 2, r * 2); c.restore();
+  }
+  function drawTopSword(c, x, e, t) {
+    const pulse = .17 + .05 * Math.sin(t * 2.4 + x * .01);
+    c.save(); c.translate(x, 0);
+    haze(c, 0, e + 30, pulse, "bottom"); glowAt(c, e - 14, 64, pulse * 2.1);
+    c.drawImage(SP_TOP, -80, e - 700, 160, 720);
+    flames(c, Math.max(0, (e - TIP) % 28), e - TIP, BLADE, t);
+    c.restore();
+  }
+  function drawBotSword(c, x, e, t, floor) {
+    const pulse = .17 + .05 * Math.sin(t * 2.4 + x * .01 + 1);
+    c.save(); c.translate(x, 0);
+    haze(c, e + HILT - 40, floor, pulse, "top"); glowAt(c, e + 14, 62, pulse * 2.2);
+    c.drawImage(SP_BOT, -80, e - 20, 160, 760);
+    flames(c, e + HILT + 8, floor, BLADE, t);
+    c.restore();
+  }
+  function topPoly(x, e) { return [[x - BLADE, -50], [x + BLADE, -50], [x + BLADE, e - TIP], [x, e], [x - BLADE, e - TIP]]; }
+  function botPoly(x, e, floor = G.H + 50) {
+    return [[x - 14, e + 2], [x + 14, e + 2], [x + 14, e + 26], [x + 10, e + 49], [x + GUARD, e + 49], [x + 42, e + 70], [x + BLADE, e + 70], [x + BLADE, floor], [x - BLADE, floor], [x - BLADE, e + 70], [x - 42, e + 70], [x - GUARD, e + 49], [x - 10, e + 49], [x - 14, e + 26]];
+  }
+  function polyDist(px, py, poly) {
+    let best = Infinity, inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [ax, ay] = poly[j], [bx, by] = poly[i], dx = bx - ax, dy = by - ay;
+      const u = clamp(((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+      best = Math.min(best, Math.hypot(px - ax - u * dx, py - ay - u * dy));
+      if ((ay > py) !== (by > py) && px < ax + (py - ay) * dx / (by - ay)) inside = !inside;
+    }
+    return inside ? -best : best;
+  }
+
+  /* ───────── Окружение ───────── */
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const mkSky = () => sprite(400, 640, c => {
+    const g = c.createLinearGradient(0, 0, 0, 562);
+    [[0, "#0c1118"], [.55, "#17182a"], [.82, "#33232a"], [1, "#6a3a1e"]].forEach(s => g.addColorStop(s[0], s[1]));
+    c.fillStyle = g; c.fillRect(0, 0, 400, 640);
+    for (let i = 0; i < 70; i++) { c.globalAlpha = .2 + rnd() * .6; c.fillStyle = "#cfe3ff"; c.beginPath(); c.arc(rnd() * 400, rnd() * 340, .5 + rnd() * .9, 0, 7); c.fill(); }
+    c.globalAlpha = 1;
+  });
+  function ridge(c, base, a1, a2, a3, ph, fill) {
+    const P = Math.PI * 2 / 800;
+    c.beginPath(); c.moveTo(0, 640);
+    for (let x = 0; x <= 800; x += 4) c.lineTo(x, base + a1 * Math.sin(P * x + ph) + a2 * Math.sin(P * x * 3 + ph * 2) + a3 * Math.sin(P * x * 8 + ph * 3));
+    c.lineTo(800, 640); c.closePath(); c.fillStyle = fill; c.fill();
+  }
+  const mkFar = () => sprite(800, 640, c => ridge(c, 440, 34, 22, 7, 1.1, "#222033"));
+  const mkNear = () => sprite(800, 640, c => {
+    ridge(c, 500, 18, 12, 5, 2.4, "#161a26");
+    c.fillStyle = "#10141c";
+    for (let i = 0; i < 44; i++) {
+      const x = i * 800 / 44 + 4, h = 24 + ((i * 37) % 19) * 1.6, by = 520 + 8 * Math.sin(i * 1.3);
+      c.beginPath(); c.moveTo(x - 10, by + 6); c.lineTo(x, by - h); c.lineTo(x + 10, by + 6); c.closePath(); c.fill();
+    }
+    c.fillRect(0, 524, 800, 120);
+  });
+  function drawBack(c, off, w = 400) {
+    c.drawImage(SP_SKY, 0, 0, w, 640);
+    for (const [sp, k] of [[SP_FAR, .15], [SP_NEAR, .4]]) {
+      const dx = -((off * k) % 800);
+      c.drawImage(sp, dx, 0, 800, 640); c.drawImage(sp, dx + 800, 0, 800, 640);
+    }
+  }
+  function drawGround(c, off, y = G.FLOOR, w = 400, h = 78) {
+    c.fillStyle = "#171d22"; c.fillRect(0, y, w, h);
+    c.fillStyle = "#3e5a3a"; c.fillRect(0, y, w, 7);
+    c.fillStyle = "#62863f"; c.fillRect(0, y, w, 3);
+    c.fillStyle = "#222a31";
+    const step = 56, dx = -(off % step);
+    for (let i = -1; i * step + dx < w; i++) {
+      const X = i * step + dx;
+      c.beginPath(); c.roundRect(X + 4, y + 16, step - 10, 20, 4); c.fill();
+      c.beginPath(); c.roundRect(X + 4 + step / 2, y + 42, step - 10, 20, 4); c.fill();
+    }
+  }
+
+  /* ───────── Игра ───────── */
+  const cv = $("#pigGame"), ctx = cv.getContext("2d");
+  let SP_TOP, SP_BOT, SP_SKY, SP_FAR, SP_NEAR;
+  function makeSprites() { if (SP_TOP) return; SP_TOP = mkTop(); SP_BOT = mkBot(); SP_SKY = mkSky(); SP_FAR = mkFar(); SP_NEAR = mkNear(); }
+  let k = 1;
+  function fit() { const r = cv.getBoundingClientRect(); if (!r.width) return; const d = Math.min(devicePixelRatio || 1, 2.5); cv.width = Math.round(r.width * d); cv.height = Math.round(r.width * 1.6 * d); k = cv.width / G.W; }
+  new ResizeObserver(fit).observe(cv);
+
+  const store = { get(n, d) { try { return localStorage.getItem(n) ?? d; } catch { return d; } }, set(n, v) { try { localStorage.setItem(n, v); } catch {} } };
+  let best = +store.get("pigBest", 0) || 0;
+  let skinId = SKINS[store.get("pigSkin", "base")] ? store.get("pigSkin", "base") : "base";
+  let soundOn = store.get("pigSound", "1") === "1";
+  let st;
+  function reset() {
+    st = { mode: "ready", y: 290, v: 0, t: 0, off: 0, score: 0, deadT: 0, burn: 0, hitBlade: false, shake: 0, flash: 0, trail: [], trailT: 0, parts: [], floats: [],
+      pillars: [{ x: 340, gc: 290, gap: G.GAP0, burned: false, scored: false }, { x: 340 + G.SPACING, gc: 250, gap: G.GAP0, burned: false, scored: false }] };
+  }
+  reset();
+  const speed = () => G.SPEED + Math.min(st.score, G.SPEED_CAP) * G.SPEED_K;
+  const gapNow = () => Math.max(G.GAPMIN, G.GAP0 - st.score);
+  function spawn() {
+    const last = st.pillars[st.pillars.length - 1], gap = gapNow();
+    const lo = 80 + gap / 2, hi = G.FLOOR - 100 - gap / 2;
+    const gc = clamp(last.gc + (Math.random() * 2 - 1) * 170, lo, hi);
+    st.pillars.push({ x: last.x + G.SPACING, gc, gap, burned: false, scored: false });
+  }
+  function puff(x, y, n, col, sp) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = sp * (.4 + Math.random()); st.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .35 + Math.random() * .35, max: .7, r: 1.5 + Math.random() * 3.5, col }); } }
+
+  let audio = null;
+  function tone(type, f0, f1, dur, vol) {
+    if (!soundOn) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === "suspended") audio.resume();
+      const o = audio.createOscillator(), g = audio.createGain(), f = audio.createBiquadFilter(), n = audio.currentTime;
+      o.type = type; o.frequency.setValueAtTime(f0, n); o.frequency.exponentialRampToValueAtTime(f1, n + dur);
+      f.type = "lowpass"; f.frequency.value = 1500;
+      g.gain.setValueAtTime(vol, n); g.gain.exponentialRampToValueAtTime(.001, n + dur);
+      o.connect(f); f.connect(g); g.connect(audio.destination); o.start(n); o.stop(n + dur);
+    } catch {}
+  }
+  const oink = () => { tone("sawtooth", 300, 140, .13, .08); tone("square", 150, 90, .13, .03); };
+
+  function press() {
+    if (st.mode === "dead") { if (st.deadT > .5) { reset(); } return; }
+    if (st.mode === "ready") st.mode = "play";
+    st.v = G.JUMP; oink(); puff(G.PIG_X - 12, st.y + 16, 5, "#c9c2b8", 45);
+  }
+  function die(blade) {
+    st.mode = "dead"; st.deadT = 0; st.hitBlade = blade; st.shake = REDUCED ? 0 : .3; st.flash = 1; st.v = blade ? -220 : 0;
+    puff(G.PIG_X, st.y, blade ? 22 : 9, blade ? "#ff9b35" : "#c9c2b8", 150);
+    tone("square", 150, 42, .35, .1);
+    if (st.score > best) { best = st.score; store.set("pigBest", best); show(); }
+  }
+  function step(dt) {
+    st.t += dt;
+    st.shake = Math.max(0, st.shake - dt); st.flash = Math.max(0, st.flash - dt * 3); st.burn = Math.max(0, st.burn - dt);
+    for (const p of st.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 110 * dt; p.life -= dt; }
+    st.parts = st.parts.filter(p => p.life > 0);
+    for (const f of st.floats) { f.y -= 42 * dt; f.life -= dt; }
+    st.floats = st.floats.filter(f => f.life > 0);
+    if (st.mode === "ready") { st.y = 290 + Math.sin(st.t * 3) * 9; st.v = Math.cos(st.t * 3) * 40; st.off += 20 * dt; return; }
+    st.v = Math.min(st.v + G.GRAV * dt, G.VMAX); st.y += st.v * dt;
+    if (st.mode === "dead") {
+      st.deadT += dt;
+      if (st.y > G.FLOOR - 16) { st.y = G.FLOOR - 16; st.v = 0; }
+      return;
+    }
+    const sp = speed(); st.off += sp * dt;
+    st.trailT += dt; if (st.trailT > .035) { st.trailT = 0; st.trail.unshift(st.y); st.trail.length = Math.min(st.trail.length, 6); }
+    for (const p of st.pillars) {
+      p.x -= sp * dt;
+      if (Math.abs(p.x - G.PIG_X) < 110) {
+        const d = Math.min(polyDist(G.PIG_X, st.y, topPoly(p.x, p.gc - p.gap / 2)), polyDist(G.PIG_X, st.y, botPoly(p.x, p.gc + p.gap / 2)));
+        if (d < G.R) { die(true); return; }
+        if (d < G.R + G.BURN) {
+          if (!p.burned && st.burn <= 0) puff(G.PIG_X, st.y - 8, 4, "#8a8078", 30);
+          p.burned = true; st.burn = .25;
+          if (Math.random() < dt * 18) puff(G.PIG_X - 8, st.y - 8, 1, "#ff9b35", 40);
+        }
+      }
+      if (!p.scored && p.x + GUARD < G.PIG_X - G.R) {
+        p.scored = true; st.score += p.burned ? 2 : 1;
+        st.floats.push({ x: G.PIG_X + 18, y: st.y - 28, txt: p.burned ? S.pig.burn : "+1", col: p.burned ? "#ff9b35" : "#ffe39a", life: .8 });
+        tone("triangle", 780, p.burned ? 1660 : 1180, .12, .06);
+      }
+    }
+    if (st.pillars[0].x < -90) st.pillars.shift();
+    while (st.pillars[st.pillars.length - 1].x < G.W + G.SPACING) spawn();
+    if (st.y > G.FLOOR - 16) { st.y = G.FLOOR - 16; die(false); return; }
+    if (st.y < -30) { st.y = -30; st.v = 0; }
+  }
+  function txt(c, s, x, y, size, col, align = "center", weight = 800, font = FONT_H, maxW = 360) {
+    c.font = `${weight} ${size}px ${font}`; c.textAlign = align; c.textBaseline = "alphabetic"; c.fillStyle = col; c.fillText(s, x, y, maxW);
+  }
+  const verdict = n => S.pig.verdicts[n === 0 ? 0 : n < 5 ? 1 : n < 15 ? 2 : n < 30 ? 3 : 4];
+  function drawPigGame(c) {
+    const sk = st.mode === "dead" && st.hitBlade ? SKINS.ash : SKINS[skinId];
+    const legs = clamp(st.v / 500, -1, 1) * -.55, ear = clamp(st.v / 400, -1, 1);
+    let face = "normal";
+    if (st.mode === "dead") face = "dead";
+    else if (st.burn > 0) face = "burn";
+    else if (st.mode === "play" && st.v < -120) face = "wide";
+    else if (st.mode === "play" && st.v > 300) face = "down";
+    if (skinId === "spectre" && st.mode === "play") {
+      st.trail.forEach((y, i) => { c.save(); c.globalAlpha = .2 - i * .03; pigSide(c, { x: G.PIG_X - (i + 1) * 13, y, s: G.PIG_S, rot: pigRot(st.v), skin: sk, legs, ear, face: "normal" }); c.restore(); });
+    }
+    pigSide(c, { x: G.PIG_X, y: st.y, s: G.PIG_S, rot: st.mode === "dead" && st.y >= G.FLOOR - 16 ? 1.45 : pigRot(st.v), skin: sk, legs, ear, face });
+  }
+  function render() {
+    const c = ctx;
+    c.setTransform(k, 0, 0, k, 0, 0);
+    c.save();
+    if (st.shake > 0) c.translate((Math.random() - .5) * 26 * st.shake, (Math.random() - .5) * 26 * st.shake);
+    drawBack(c, st.off);
+    for (const p of st.pillars) if (p.x > -100 && p.x < G.W + 100) {
+      drawTopSword(c, p.x, p.gc - p.gap / 2, st.t);
+      drawBotSword(c, p.x, p.gc + p.gap / 2, st.t, G.FLOOR);
+    }
+    drawGround(c, st.off);
+    drawPigGame(c);
+    for (const p of st.parts) { c.globalAlpha = clamp(p.life / p.max, 0, 1); c.fillStyle = p.col; c.beginPath(); c.arc(p.x, p.y, p.r, 0, 7); c.fill(); }
+    c.globalAlpha = 1;
+    for (const f of st.floats) { c.globalAlpha = clamp(f.life * 2, 0, 1); txt(c, f.txt, f.x, f.y, 30, f.col); }
+    c.globalAlpha = 1;
+    c.restore();
+    if (st.flash > 0) { c.fillStyle = `rgba(255,190,110,${st.flash * .5})`; c.fillRect(0, 0, G.W, G.H); }
+    c.lineJoin = "round";
+    if (st.mode === "play") {
+      c.font = `800 84px ${FONT_H}`; c.textAlign = "center"; c.strokeStyle = "#0c0f13"; c.lineWidth = 7; c.strokeText(st.score, G.W / 2, 88);
+      txt(c, st.score, G.W / 2, 88, 84, "#ffe39a");
+    }
+    if (st.mode === "ready") {
+      c.font = `800 25px ${FONT_H}`;
+      const hw = Math.min(c.measureText(S.pig.hint).width, 230) + 28;
+      c.fillStyle = "rgba(12,15,19,.72)"; c.beginPath(); c.roundRect(20, 512, hw, 40, 8); c.fill();
+      txt(c, S.pig.hint, 20 + hw / 2, 539, 25, "#eceef2", "center", 800, FONT_H, 230);
+      c.font = `800 62px ${FONT_H}`; c.textAlign = "left"; c.strokeStyle = "#0c0f13"; c.lineWidth = 7;
+      c.strokeText(S.pig.title[0], 22, 72); c.strokeText(S.pig.title[1], 22, 124);
+      txt(c, S.pig.title[0], 22, 72, 62, "#eceef2", "left"); txt(c, S.pig.title[1], 22, 124, 62, "#e3ae45", "left");
+      if (best) txt(c, S.pig.best(best), 24, 156, 26, "#eceef2", "left");
+    }
+    if (st.mode === "dead" && st.deadT > .35) {
+      const a = clamp((st.deadT - .35) * 4, 0, 1); c.globalAlpha = a;
+      c.fillStyle = "rgba(12,15,19,.9)"; c.strokeStyle = "#262d36"; c.lineWidth = 1.5;
+      c.beginPath(); c.roundRect(48, 176, 304, 248, 12); c.fill(); c.stroke();
+      txt(c, `−25 ${S.mmr}`, G.W / 2, 256, 76, "#d65c58");
+      txt(c, verdict(st.score), G.W / 2, 292, 28, "#eceef2", "center", 800, FONT_H, 284);
+      txt(c, String(st.score), 138, 352, 56, "#ffe39a"); txt(c, S.pig.score, 138, 374, 22, "#8d97a5");
+      txt(c, String(best), 262, 352, 56, "#e3ae45"); txt(c, S.pig.record, 262, 374, 22, "#8d97a5");
+      if (st.deadT > .5) txt(c, S.pig.again, G.W / 2, 408, 23, "#eceef2", "center", 800, FONT_H, 284);
+      c.globalAlpha = 1;
+    }
+  }
+
+  const dlg = $("#pigDlg"), btn = $("#pigBtn"), skinsEl = $("#pigSkins"), muteEl = $("#pigMute");
+  let raf = 0, last = 0, acc = 0, loaded = false;
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, .05); last = now; acc += dt;
+    const FIX = 1 / 120;
+    while (acc >= FIX) { step(FIX); acc -= FIX; }
+    render();
+    raf = requestAnimationFrame(frame);
+  }
+  function loadOnce() {
+    if (loaded) return;
+    loaded = true;
+    const l = document.createElement("link"); l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=Sofia+Sans+Extra+Condensed:wght@800&display=swap";
+    l.onload = () => document.fonts?.load(`800 62px "Sofia Sans Extra Condensed"`, "ФЛЭППИ FLAPPY 0123").catch(() => {});
+    document.head.append(l);
+    makeSprites();
+  }
+  function open() {
+    loadOnce(); reset(); show();
+    dlg.showModal(); fit(); cv.focus({ preventScroll: true });
+    last = performance.now(); acc = 0; raf = requestAnimationFrame(frame);
+  }
+  function show() {
+    $("#pigName").textContent = S.pig.btn;
+    $("#pigSub").textContent = best ? S.pig.best(best) : S.pig.play;
+    $("#pigTitle").textContent = S.pig.btn;
+    $("#pigClose").setAttribute("aria-label", S.pig.close);
+    cv.setAttribute("aria-label", S.pig.aria);
+    muteEl.textContent = soundOn ? S.pig.soundOn : S.pig.soundOff;
+    muteEl.setAttribute("aria-pressed", String(!soundOn));
+    skinsEl.setAttribute("aria-label", S.pig.skin);
+    skinsEl.querySelectorAll("button").forEach(b => {
+      b.textContent = S.pig.skins[b.dataset.id];
+      b.setAttribute("aria-pressed", String(b.dataset.id === skinId));
+    });
+  }
+  for (const id of Object.keys(SKINS)) {
+    const b = document.createElement("button"); b.type = "button"; b.dataset.id = id;
+    b.addEventListener("click", () => { skinId = id; store.set("pigSkin", id); show(); cv.focus({ preventScroll: true }); });
+    skinsEl.append(b);
+  }
+  muteEl.addEventListener("click", () => { soundOn = !soundOn; store.set("pigSound", soundOn ? "1" : "0"); show(); cv.focus({ preventScroll: true }); });
+  btn.addEventListener("click", open);
+  $("#pigClose").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+  dlg.addEventListener("close", () => { cancelAnimationFrame(raf); btn.focus({ preventScroll: true }); });
+  cv.addEventListener("pointerdown", e => { e.preventDefault(); cv.focus({ preventScroll: true }); press(); });
+  dlg.addEventListener("keydown", e => {
+    if (e.target.tagName === "BUTTON") return;
+    if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") { e.preventDefault(); if (!e.repeat) press(); }
+  });
+  // Значок на кнопке: та же модель, что в игре
+  const icon = $("#pigIcon"), ic = icon.getContext("2d");
+  ic.scale(2, 2);
+  pigSide(ic, { x: 16, y: 15, s: .38, rot: -.1, skin: SKINS.base, legs: .3, ear: -.4, face: "wide" });
+  return { show, open };
+})();
 
 // Зал славы: список ведётся в clips.json, названия и превью дотягивает scripts/clips.py.
 let CLIPS = [];
