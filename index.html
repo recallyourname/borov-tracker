@@ -177,15 +177,15 @@ svg .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .pct { font: 700 20px var(--f-head); text-align: right; }
 
 /* поросёнок */
-.arcade { margin-left: auto; display: grid; gap: 6px; }
+.arcade { margin-left: auto; display: flex; gap: 8px; align-items: stretch; }
 .arcade .slot { margin-left: 0; }
 .arcade + .live { margin-left: 0; }
-.pigbtn { display: flex; align-items: center; gap: 8px; padding: 3px 12px 3px 8px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); color: var(--text); cursor: pointer; font: inherit; transition: border-color .2s; }
+.pigbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); color: var(--text); cursor: pointer; font: inherit; transition: border-color .2s; }
 .pigbtn:hover { border-color: #ff9db2; }
 .pigbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.pigbtn canvas { width: 34px; height: 28px; display: block; }
+.pigbtn canvas { width: 48px; height: 40px; display: block; }
 .pig-name { font: 700 12px var(--f-head); letter-spacing: .14em; text-transform: uppercase; color: #ff9db2; }
-.pig-sub { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.pig-sub { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .pigd { padding: 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; }
 .pigd::backdrop { background: #06080bd9; }
 body:has(.pigd[open]) { overflow: hidden; }
@@ -455,7 +455,7 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
     </div>
     <div class="arcade">
     <button class="pigbtn" id="pigBtn" type="button">
-      <canvas id="pigIcon" width="68" height="56" aria-hidden="true"></canvas>
+      <canvas id="pigIcon" width="144" height="120" aria-hidden="true"></canvas>
       <span class="pig-name" id="pigName">Поросёнок</span>
       <span class="pig-sub" id="pigSub"></span>
     </button>
@@ -507,7 +507,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const I18N = {
   ru: {
-    pig: { btn: "Поросёнок", play: "Сыграть", best: n => `Рекорд ${n}`, hint: "Тап или пробел: прыжок", title: ["ФЛЭППИ", "БОРОВ"], burn: "ОЖОГ +2", score: "очков", record: "рекорд", again: "Нажми, чтобы сыграть ещё",
+    pig: { btn: "Поросёнок", play: "Сыграть", best: n => `Рекорд ${n}`, hint: "Тап или пробел: прыжок", title: ["ФЛЭППИ", "БОРОВ"], burn: "ОЖОГ +2", level: n => `уровень ${n}`, levelUp: n => `УРОВЕНЬ ${n}!`, score: "очков", record: "рекорд", again: "Нажми, чтобы сыграть ещё",
       verdicts: ["Сгорел ещё на линии", "Радик опять не окупился", "Фарм был, катки не было", "Красиво, но всё равно минус", "Тебя уже репортят"],
       soundOn: "Звук: вкл", soundOff: "Звук: выкл", close: "Закрыть", skin: "Скин", aria: "Игра: поросёнок прыгает между мечами Radiance. Нажмите, чтобы прыгнуть.",
       skins: { base: "Розовый", spectre: "Spectre", midas: "Мидас", ash: "Пепел" } },
@@ -567,7 +567,7 @@ const I18N = {
     histWin: "Лучшая серия ранкеда", histLoss: "Худшая серия ранкеда", histMore: n => `Показать ещё (осталось ${n})`, histLoading: "Загружаю список матчей…", histErr: "Не удалось загрузить список матчей",
   },
   es: {
-    pig: { btn: "Cerdito", play: "Jugar", best: n => `Récord ${n}`, hint: "Toca o espacio: saltar", title: ["FLAPPY", "BOROV"], burn: "QUEMADO +2", score: "puntos", record: "récord", again: "Pulsa para jugar otra vez",
+    pig: { btn: "Cerdito", play: "Jugar", best: n => `Récord ${n}`, hint: "Toca o espacio: saltar", title: ["FLAPPY", "BOROV"], burn: "QUEMADO +2", level: n => `nivel ${n}`, levelUp: n => `¡NIVEL ${n}!`, score: "puntos", record: "récord", again: "Pulsa para jugar otra vez",
       verdicts: ["Quemado ya en la línea", "El Radiance no se amortizó", "Mucho farm, ninguna victoria", "Bonito, pero sigue en negativo", "Ya te están reportando"],
       soundOn: "Sonido: sí", soundOff: "Sonido: no", close: "Cerrar", skin: "Aspecto", aria: "Juego: el cerdito salta entre espadas Radiance. Pulsa para saltar.",
       skins: { base: "Rosa", spectre: "Spectre", midas: "Midas", ash: "Ceniza" } },
@@ -1436,7 +1436,7 @@ const pigGame = (() => {
   const FONT_H = '"Sofia Sans Extra Condensed", "Arial Narrow", system-ui, sans-serif';
   const FONT_B = 'Inter, "Segoe UI", system-ui, sans-serif';
   const OUT = "#22121a";
-  const G = { W: 400, H: 640, FLOOR: 562, PIG_X: 110, R: 15, PIG_S: .8, GRAV: 1500, JUMP: -430, VMAX: 640, SPEED: 150, SPEED_K: 1.2, SPEED_CAP: 40, GAP0: 170, GAPMIN: 140, SPACING: 240, BURN: 20 };
+  const G = { W: 400, H: 640, FLOOR: 562, PIG_X: 110, R: 15, PIG_S: .8, GRAV: 1500, JUMP: -430, VMAX: 640, SPEED: 150, SPEED_MAX: 255, GAP0: 172, GAPMIN: 128, SPACING: 240, SPACING_MIN: 212, BURN: 20, LEVEL: 10, LEVEL_MAX: 8 };
   const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const pigRot = v => clamp(v / 600, -.45, 1.2);
@@ -1731,16 +1731,25 @@ const pigGame = (() => {
   let st;
   function reset() {
     st = { mode: "ready", y: 290, v: 0, t: 0, off: 0, score: 0, deadT: 0, burn: 0, hitBlade: false, shake: 0, flash: 0, trail: [], trailT: 0, parts: [], floats: [],
-      pillars: [{ x: 340, gc: 290, gap: G.GAP0, burned: false, scored: false }, { x: 340 + G.SPACING, gc: 250, gap: G.GAP0, burned: false, scored: false }] };
+      lvl: 1, lvlT: 0,
+      pillars: [{ x: 340, base: 290, gc: 290, amp: 0, ph: 0, w: 0, gap: G.GAP0, burned: false, scored: false }, { x: 340 + G.SPACING, base: 250, gc: 250, amp: 0, ph: 0, w: 0, gap: G.GAP0, burned: false, scored: false }] };
   }
   reset();
-  const speed = () => G.SPEED + Math.min(st.score, G.SPEED_CAP) * G.SPEED_K;
-  const gapNow = () => Math.max(G.GAPMIN, G.GAP0 - st.score);
+  // Прогрессия: каждые G.LEVEL очков новый уровень. Растут скорость и разброс по высоте, сужается проход,
+  // мечи стоят теснее, с 3-го уровня часть мечей ездит вверх-вниз.
+  const level = () => Math.min(G.LEVEL_MAX, 1 + Math.floor(st.score / G.LEVEL));
+  const prog = () => clamp(st.score / ((G.LEVEL_MAX - 1) * G.LEVEL), 0, 1);
+  const speed = () => G.SPEED + (G.SPEED_MAX - G.SPEED) * prog();
+  const gapNow = () => G.GAP0 - (G.GAP0 - G.GAPMIN) * prog();
+  const spacingNow = () => G.SPACING - (G.SPACING - G.SPACING_MIN) * prog();
   function spawn() {
-    const last = st.pillars[st.pillars.length - 1], gap = gapNow();
-    const lo = 80 + gap / 2, hi = G.FLOOR - 100 - gap / 2;
-    const gc = clamp(last.gc + (Math.random() * 2 - 1) * 170, lo, hi);
-    st.pillars.push({ x: last.x + G.SPACING, gc, gap, burned: false, scored: false });
+    const last = st.pillars[st.pillars.length - 1], gap = gapNow(), lv = level();
+    const mover = lv >= 3 && Math.random() < .25 + (lv - 3) * .1;
+    const amp = mover ? 22 + (lv - 3) * 7 : 0;
+    const lo = 80 + gap / 2 + amp, hi = G.FLOOR - 100 - gap / 2 - amp;
+    const jump = 120 + 70 * prog();
+    const base = clamp(last.base + (Math.random() * 2 - 1) * jump, lo, hi);
+    st.pillars.push({ x: last.x + spacingNow(), base, gc: base, amp, ph: Math.random() * 6.28, w: 1.6 + Math.random() * .8, gap, burned: false, scored: false });
   }
   function puff(x, y, n, col, sp) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = sp * (.4 + Math.random()); st.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .35 + Math.random() * .35, max: .7, r: 1.5 + Math.random() * 3.5, col }); } }
 
@@ -1772,7 +1781,7 @@ const pigGame = (() => {
   }
   function step(dt) {
     st.t += dt;
-    st.shake = Math.max(0, st.shake - dt); st.flash = Math.max(0, st.flash - dt * 3); st.burn = Math.max(0, st.burn - dt);
+    st.shake = Math.max(0, st.shake - dt); st.flash = Math.max(0, st.flash - dt * 3); st.burn = Math.max(0, st.burn - dt); st.lvlT = Math.max(0, st.lvlT - dt);
     for (const p of st.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 110 * dt; p.life -= dt; }
     st.parts = st.parts.filter(p => p.life > 0);
     for (const f of st.floats) { f.y -= 42 * dt; f.life -= dt; }
@@ -1788,6 +1797,7 @@ const pigGame = (() => {
     st.trailT += dt; if (st.trailT > .035) { st.trailT = 0; st.trail.unshift(st.y); st.trail.length = Math.min(st.trail.length, 6); }
     for (const p of st.pillars) {
       p.x -= sp * dt;
+      if (p.amp) p.gc = p.base + Math.sin(p.ph + st.t * p.w) * p.amp;
       if (Math.abs(p.x - G.PIG_X) < 110) {
         const d = Math.min(polyDist(G.PIG_X, st.y, topPoly(p.x, p.gc - p.gap / 2)), polyDist(G.PIG_X, st.y, botPoly(p.x, p.gc + p.gap / 2)));
         if (d < G.R) { die(true); return; }
@@ -1801,6 +1811,7 @@ const pigGame = (() => {
         p.scored = true; st.score += p.burned ? 2 : 1;
         st.floats.push({ x: G.PIG_X + 18, y: st.y - 28, txt: p.burned ? S.pig.burn : "+1", col: p.burned ? "#ff9b35" : "#ffe39a", life: .8 });
         tone("triangle", 780, p.burned ? 1660 : 1180, .12, .06);
+        if (level() > st.lvl) { st.lvl = level(); st.lvlT = 1.6; tone("triangle", 520, 1040, .25, .07); tone("triangle", 780, 1560, .3, .05); }
       }
     }
     if (st.pillars[0].x < -90) st.pillars.shift();
@@ -1847,6 +1858,13 @@ const pigGame = (() => {
     if (st.mode === "play") {
       c.font = `800 84px ${FONT_H}`; c.textAlign = "center"; c.strokeStyle = "#0c0f13"; c.lineWidth = 7; c.strokeText(st.score, G.W / 2, 88);
       txt(c, st.score, G.W / 2, 88, 84, "#ffe39a");
+      c.font = `800 22px ${FONT_H}`; c.lineWidth = 5; c.strokeText(S.pig.level(st.lvl), G.W / 2, 114);
+      txt(c, S.pig.level(st.lvl), G.W / 2, 114, 22, "#c9d1dc");
+      if (st.lvlT > 0) {
+        const a = clamp(st.lvlT * 2, 0, 1), y = 210 - (1.6 - st.lvlT) * 14;
+        c.globalAlpha = a; c.font = `800 52px ${FONT_H}`; c.strokeStyle = "#0c0f13"; c.lineWidth = 7; c.strokeText(S.pig.levelUp(st.lvl), G.W / 2, y);
+        txt(c, S.pig.levelUp(st.lvl), G.W / 2, y, 52, "#e3ae45"); c.globalAlpha = 1;
+      }
     }
     if (st.mode === "ready") {
       c.font = `800 25px ${FONT_H}`;
@@ -1925,7 +1943,7 @@ const pigGame = (() => {
   });
   // Значок на кнопке: та же модель, что в игре
   const icon = $("#pigIcon"), ic = icon.getContext("2d");
-  ic.scale(2, 2);
+  ic.scale(144 / 34, 144 / 34);
   pigSide(ic, { x: 16, y: 15, s: .38, rot: -.1, skin: SKINS.base, legs: .3, ear: -.4, face: "wide" });
   return { show, open };
 })();

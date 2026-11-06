@@ -95,7 +95,7 @@ def get(url, headers=None, timeout=60, tries=3):
                 return r.read().decode("utf-8", "replace")
         except Exception as e:  # noqa: BLE001
             print(f"GET {re.sub(r'key=[^&]+', 'key=***', url)} failed ({attempt + 1}/{tries}): {e}", file=sys.stderr)
-            if isinstance(e, urllib.error.HTTPError) and e.code == 404:
+            if isinstance(e, urllib.error.HTTPError) and e.code in (401, 402, 404):
                 return None
             time.sleep(5 * (attempt + 1))
     return None
