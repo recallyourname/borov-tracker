@@ -185,7 +185,6 @@ svg .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .tatt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 10px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
 .tatt svg { width: 84px; height: 46px; display: block; }
 .tatt-nick { font: 700 13px var(--f-head); letter-spacing: .08em; color: var(--gold); line-height: 1; }
-.tatt-sub { font-size: 11px; color: var(--loss); white-space: nowrap; line-height: 1; }
 @media (max-width: 560px) { .arcade { flex-wrap: wrap; } }
 .pigbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .pigbtn canvas { width: 48px; height: 40px; display: block; }
@@ -459,7 +458,7 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       </div>
     </div>
     <div class="arcade">
-    <div class="tatt" id="tatt" title="marun135 сын шалавы">
+    <div class="tatt" title="marun135">
       <svg viewBox="0 0 120 66" aria-hidden="true">
         <g stroke="#1a0e08" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
           <path d="M60 4l3 6-3 3-3-3z" fill="#d65c58"/>
@@ -475,7 +474,6 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
         <text x="60" y="57.5" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="9" textLength="78" lengthAdjust="spacingAndGlyphs" fill="#f6ead2" id="tattTitle">КОРОЛЬ ЧУХАНОВ</text>
       </svg>
       <span class="tatt-nick">marun135</span>
-      <span class="tatt-sub" id="tattSub">сын шалавы</span>
     </div>
     <button class="pigbtn" id="pigBtn" type="button">
       <canvas id="pigIcon" width="144" height="120" aria-hidden="true"></canvas>
@@ -534,7 +532,7 @@ const I18N = {
       verdicts: ["Сгорел ещё на линии", "Радик опять не окупился", "Фарм был, катки не было", "Красиво, но всё равно минус", "Тебя уже репортят"],
       soundOn: "Звук: вкл", soundOff: "Звук: выкл", close: "Закрыть", skin: "Скин", aria: "Игра: поросёнок прыгает между мечами Radiance. Нажмите, чтобы прыгнуть.",
       skins: { base: "Розовый", spectre: "Spectre", midas: "Мидас", ash: "Пепел" } },
-    tatt: ["КОРОЛЬ ЧУХАНОВ", "сын шалавы"],
+    tatt: "КОРОЛЬ ЧУХАНОВ",
     slotName: "Борово-казино", slotCnt: (s, j) => `спинов ${s} · джекпотов ${j}`, slotPull: "Дёрнуть ручку",
     slot: { idle: "Дёрни ручку →", spin: "Крутим…", miss: "Мимо. Как его ММР", close: "Два Радика… третий ушёл в рапиру",
       triple: "Три одинаковых, но не Радик", down: "Три минуса · −75 ММР", spectre: "Спектра, Спектра, Спектра", jackpot: "Джекпот · три Радика" },
@@ -595,7 +593,7 @@ const I18N = {
       verdicts: ["Quemado ya en la línea", "El Radiance no se amortizó", "Mucho farm, ninguna victoria", "Bonito, pero sigue en negativo", "Ya te están reportando"],
       soundOn: "Sonido: sí", soundOff: "Sonido: no", close: "Cerrar", skin: "Aspecto", aria: "Juego: el cerdito salta entre espadas Radiance. Pulsa para saltar.",
       skins: { base: "Rosa", spectre: "Spectre", midas: "Midas", ash: "Ceniza" } },
-    tatt: ["REY DE LOS PRINGADOS", "hijo de puta"],
+    tatt: "REY DE LOS PRINGADOS",
     slotName: "Casino Borovo", slotCnt: (s, j) => `tiradas ${s} · botes ${j}`, slotPull: "Tirar de la palanca",
     slot: { idle: "Tira de la palanca →", spin: "Girando…", miss: "Fallo. Como su MMR", close: "Dos Radiance… el tercero se fue en Rapier",
       triple: "Tres iguales, pero no Radiance", down: "Tres menos · −75 MMR", spectre: "Spectre, Spectre, Spectre", jackpot: "Bote · tres Radiance" },
@@ -1329,9 +1327,7 @@ function applyLang(next) {
   document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
   if (DATA) render(DATA); else $("#app .err").textContent = S.loading;
   showTwitch();
-  $("#tattTitle").textContent = S.tatt[0];
-  $("#tattSub").textContent = S.tatt[1];
-  $("#tatt").title = `marun135 ${S.tatt[1]}`;
+  $("#tattTitle").textContent = S.tatt;
   showSlot();
   pigGame.show();
   renderClips();
