@@ -182,6 +182,11 @@ svg .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .arcade + .live { margin-left: 0; }
 .pigbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); color: var(--text); cursor: pointer; font: inherit; transition: border-color .2s; }
 .pigbtn:hover { border-color: #ff9db2; }
+.tatt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 10px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.tatt svg { width: 84px; height: 46px; display: block; }
+.tatt-nick { font: 700 13px var(--f-head); letter-spacing: .08em; color: var(--gold); line-height: 1; }
+.tatt-sub { font-size: 11px; color: var(--loss); white-space: nowrap; line-height: 1; }
+@media (max-width: 560px) { .arcade { flex-wrap: wrap; } }
 .pigbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .pigbtn canvas { width: 48px; height: 40px; display: block; }
 .pig-name { font: 700 12px var(--f-head); letter-spacing: .14em; text-transform: uppercase; color: #ff9db2; }
@@ -454,6 +459,24 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       </div>
     </div>
     <div class="arcade">
+    <div class="tatt" title="marun135 сын шалавы">
+      <svg viewBox="0 0 120 66" aria-hidden="true">
+        <g stroke="#1a0e08" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M60 4l3 6-3 3-3-3z" fill="#d65c58"/>
+          <path d="M32 40l-4-24 12 10 8-16 12 14 12-14 8 16 12-10-4 24z" fill="#e3ae45"/>
+          <path d="M33 40h54v7H33z" fill="#c48a2a"/>
+          <circle cx="28" cy="15" r="3" fill="#eceef2"/><circle cx="48" cy="9" r="3" fill="#eceef2"/>
+          <circle cx="72" cy="9" r="3" fill="#eceef2"/><circle cx="92" cy="15" r="3" fill="#eceef2"/>
+          <circle cx="60" cy="31" r="3.4" fill="#4fb8cf"/><circle cx="45" cy="34" r="2.4" fill="#d65c58"/><circle cx="75" cy="34" r="2.4" fill="#d65c58"/>
+          <path d="M4 50l14-3v16L4 60l5-5z" fill="#9e3431"/><path d="M116 50l-14-3v16l14-3-5-5z" fill="#9e3431"/>
+          <path d="M14 46q46-6 92 0v15q-46-6-92 0z" fill="#d65c58"/>
+        </g>
+        <path d="M44 22l3 9M76 22l-3 9" stroke="#1a0e08" stroke-width="1.2" opacity=".55"/>
+        <text x="60" y="57.5" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="9" textLength="78" lengthAdjust="spacingAndGlyphs" fill="#f6ead2">КОРОЛЬ ЧУХАНОВ</text>
+      </svg>
+      <span class="tatt-nick">marun135</span>
+      <span class="tatt-sub">сын шалавы</span>
+    </div>
     <button class="pigbtn" id="pigBtn" type="button">
       <canvas id="pigIcon" width="144" height="120" aria-hidden="true"></canvas>
       <span class="pig-name" id="pigName">Поросёнок</span>
